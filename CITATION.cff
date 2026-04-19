@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use SPPS Synthesis Assistant in your research, please cite it as below."
+type: software
+title: "SPPS Synthesis Assistant"
+version: "1.0.0"
+date-released: "2024-01-01"
+license: MIT
+abstract: >
+  A Python CLI tool for parallel Solid Phase Peptide Synthesis (SPPS) workflow
+  management. Generates GMP-compliant cycle guides, stoichiometry calculations,
+  peptide physicochemical analysis, and materials lists. Replaces the legacy
+  Perl-based Spys.exe tool with a modern, cross-platform, open-source solution.
+keywords:
+  - SPPS
+  - peptide synthesis
+  - solid phase peptide synthesis
+  - GMP
+  - chemistry
+  - CLI
+  - workflow management
+authors:
+  - name: "SPPS Assistant Contributors"
+repository-code: "https://github.com/spps-assistant/spps-assistant"
+url: "https://github.com/spps-assistant/spps-assistant"

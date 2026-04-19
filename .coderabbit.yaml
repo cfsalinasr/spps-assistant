@@ -1,0 +1,55 @@
+version: "2"
+
+language: "en-US"
+
+tone_instructions: >
+  This is a scientific CLI tool used in GMP (Good Manufacturing Practice)
+  laboratory settings for peptide synthesis. Reviews should be precise,
+  technically rigorous, and flag any issues that could cause incorrect
+  stoichiometric calculations, wrong sequence reversals, or data integrity
+  problems in the persistent database. Correctness is paramount.
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: true
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+
+  path_instructions:
+    - path: "spps_assistant/domain/**"
+      instructions: >
+        Domain layer must remain pure Python with no I/O or external dependencies.
+        Flag any import that is not from the standard library or another domain module.
+        Pay special attention to: bracket-notation token parsing (C(Trt) must be atomic),
+        stoichiometry formulas, and hydrophobicity scale values (validated against
+        original Spys.pl source). Any change to a formula must include the scientific
+        reference or derivation.
+
+    - path: "spps_assistant/infrastructure/pdf_generator.py"
+      instructions: >
+        GMP compliance: every coupling cycle must start on a new page, checkbox cells
+        must use literal '[ ]' text, and all table columns must fit within page width.
+        Verify that deprotection and coupling table rows match the SRS spec.
+
+    - path: "spps_assistant/infrastructure/sqlite_repository.py"
+      instructions: >
+        Check for SQL injection risks — all queries must use parameterised statements
+        (? placeholders), never f-strings or .format() with user data.
+
+    - path: "tests/**"
+      instructions: >
+        Tests must not mock the domain logic. Infrastructure tests may use tmp_path
+        fixtures. Any new domain function must have a corresponding unit test that
+        validates against a known-good value (ideally cross-checked with original
+        Spys.pl output).
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+
+chat:
+  auto_reply: true

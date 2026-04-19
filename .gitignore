@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.env
+.venv
+venv/
+env/
+
+# Tests & coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.lcov
+
+# SonarCloud
+.scannerwork/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# User data (never commit DB or config)
+*.db
+spps_config.yaml
+spps_output/
+
+# OS
+Thumbs.db

@@ -87,6 +87,18 @@ PKA_VALUES = {
     'D': 3.9,  'E': 4.1,  'H': 6.5,  'C': 8.3,  'Y': 10.1,  'K': 10.5,  'R': 12.5,
 }
 
+ORTHOGONAL_PROTECTING_GROUPS = {
+    'Acm': {
+        'display': 'Cys(Acm)',
+        'full_name': 'Acetamidomethyl',
+        'warning': (
+            'NOT removed by standard TFA global deprotection. '
+            'Requires a separate post-synthesis step: '
+            'I\u2082 in AcOH/MeOH/water, or Pd(PPh\u2083)\u2084 in CHCl\u2083/AcOH/NMM.'
+        ),
+    },
+}
+
 ACTIVATORS = ['HBTU', 'TBTU', 'HCTU', 'DIC', 'DCC']
 BASES = ['DIEA', 'Pyridine', 'None']
 DEPROTECTION_REAGENTS = ['Piperidine 20%', 'Piperazine 20%']

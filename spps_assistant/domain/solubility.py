@@ -58,6 +58,30 @@ def classify_hydrophobicity(kd: float, eisenberg: float, bm: float) -> bool:
     return votes >= 2
 
 
+def check_orthogonal_protection(tokens: List[str]) -> List[str]:
+    """Return tokens that carry orthogonal protecting groups (e.g. Acm).
+
+    These groups survive standard TFA cleavage and require a dedicated
+    post-synthesis deprotection step.
+
+    Args:
+        tokens: List of residue tokens
+
+    Returns:
+        List of tokens whose protection group is in ORTHOGONAL_PROTECTING_GROUPS
+    """
+    from spps_assistant.domain.constants import ORTHOGONAL_PROTECTING_GROUPS
+    found = []
+    for tok in tokens:
+        try:
+            _, prot = parse_token(tok)
+        except ValueError:
+            continue
+        if prot in ORTHOGONAL_PROTECTING_GROUPS:
+            found.append(tok)
+    return found
+
+
 def check_light_sensitivity(tokens: List[str]) -> bool:
     """Check if peptide contains light-sensitive residues (F, Y, or W).
 
@@ -259,6 +283,7 @@ def analyze_peptide(
     bm_avg = calc_hydrophobicity(tokens, bm_scale)
     is_hydrophobic = classify_hydrophobicity(kd_avg, eis_avg, bm_avg)
     light_sensitive = check_light_sensitivity(tokens)
+    orthogonal_groups = check_orthogonal_protection(tokens)
     net_charge = calc_net_charge_ph7(tokens, pka_values)
     pI_val = calc_pI(tokens, pka_values)
     gravy_val = calc_gravy(tokens, kd_scale)
@@ -292,4 +317,5 @@ def analyze_peptide(
         net_charge_ph7=round(net_charge, 3),
         pI=round(pI_val, 2),
         gravy=round(gravy_val, 3),
+        orthogonal_groups=orthogonal_groups,
     )

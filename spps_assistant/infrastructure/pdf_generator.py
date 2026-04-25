@@ -475,6 +475,49 @@ def generate_cycle_guide_pdf(
     doc.build(elements)
 
 
+def _add_orthogonal_warning_pdf(elements: list, orthogonal_tokens: List[str]) -> None:
+    """Append a red-bordered warning box for orthogonal protecting groups."""
+    from spps_assistant.domain.constants import ORTHOGONAL_PROTECTING_GROUPS
+    from spps_assistant.domain.sequence import parse_token
+
+    warning_lines = ['\u26a0  ORTHOGONAL PROTECTING GROUP — ADDITIONAL POST-SYNTHESIS STEP REQUIRED']
+    for tok in orthogonal_tokens:
+        try:
+            _, prot = parse_token(tok)
+        except ValueError:
+            prot = ''
+        info = ORTHOGONAL_PROTECTING_GROUPS.get(prot, {})
+        display = info.get('display', tok)
+        msg = info.get('warning', 'Requires special deprotection — not removed by TFA.')
+        warning_lines.append(f'{display} ({tok}): {msg}')
+
+    warn_style = ParagraphStyle(
+        'OrthoWarn', fontSize=8, fontName='Helvetica-Bold',
+        textColor=colors.HexColor('#7B241C'),
+        leftPadding=6, rightPadding=6,
+        spaceAfter=2,
+    )
+    body_style = ParagraphStyle(
+        'OrthoBody', fontSize=8, fontName='Helvetica',
+        textColor=colors.HexColor('#7B241C'),
+        leftPadding=6, rightPadding=6,
+        spaceAfter=1,
+    )
+
+    box_content = [[Paragraph(warning_lines[0], warn_style)]]
+    for line in warning_lines[1:]:
+        box_content.append([Paragraph(line, body_style)])
+
+    box_table = Table(box_content, colWidths=[17.5 * cm])
+    box_table.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 1.5, colors.HexColor('#C0392B')),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#FDEDEC')),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    elements.append(box_table)
+
+
 def generate_peptide_info_pdf(
     path: Path,
     synthesis_name: str,
@@ -559,6 +602,11 @@ def generate_peptide_info_pdf(
         ]))
 
         elements.append(info_table)
+
+        if sol and sol.orthogonal_groups:
+            elements.append(Spacer(1, 2 * mm))
+            _add_orthogonal_warning_pdf(elements, sol.orthogonal_groups)
+
         elements.append(Spacer(1, 5 * mm))
 
     doc.build(elements)

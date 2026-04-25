@@ -39,6 +39,7 @@ class SolubilityResult:
     net_charge_ph7: Optional[float] = None
     pI: Optional[float] = None
     gravy: Optional[float] = None
+    orthogonal_groups: List[str] = field(default_factory=list)
 
 
 @dataclass

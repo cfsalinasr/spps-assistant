@@ -351,6 +351,35 @@ def generate_cycle_guide_docx(
     doc.save(str(path))
 
 
+def _add_orthogonal_warning_docx(doc: Document, orthogonal_tokens: List[str]) -> None:
+    """Add a red-highlighted warning paragraph for orthogonal protecting groups."""
+    from spps_assistant.domain.constants import ORTHOGONAL_PROTECTING_GROUPS
+    from spps_assistant.domain.sequence import parse_token
+
+    p = doc.add_paragraph()
+    run = p.add_run('\u26a0  ORTHOGONAL PROTECTING GROUP — ADDITIONAL POST-SYNTHESIS STEP REQUIRED')
+    run.bold = True
+    run.font.color.rgb = RGBColor(0x7B, 0x24, 0x1C)
+    run.font.size = Pt(9)
+
+    for tok in orthogonal_tokens:
+        try:
+            _, prot = parse_token(tok)
+        except ValueError:
+            prot = ''
+        info = ORTHOGONAL_PROTECTING_GROUPS.get(prot, {})
+        display = info.get('display', tok)
+        msg = info.get('warning', 'Requires special deprotection — not removed by TFA.')
+        bp = doc.add_paragraph(style='List Bullet')
+        run2 = bp.add_run(f'{display} ({tok}): ')
+        run2.bold = True
+        run2.font.color.rgb = RGBColor(0x7B, 0x24, 0x1C)
+        run2.font.size = Pt(9)
+        run3 = bp.add_run(msg)
+        run3.font.color.rgb = RGBColor(0x7B, 0x24, 0x1C)
+        run3.font.size = Pt(9)
+
+
 def generate_peptide_info_docx(
     path: Path,
     synthesis_name: str,
@@ -402,6 +431,10 @@ def generate_peptide_info_docx(
             ]
 
         _add_table_with_header(doc, info_data)
+
+        if sol and sol.orthogonal_groups:
+            _add_orthogonal_warning_docx(doc, sol.orthogonal_groups)
+
         doc.add_paragraph()
 
     doc.save(str(path))

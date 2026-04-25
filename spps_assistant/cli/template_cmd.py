@@ -15,11 +15,13 @@ console = Console()
 def template(output_dir: str) -> None:
     """Generate blank materials input template files.
 
-    Creates two files:
-        spps_materials_template.csv   — CSV template for Fmoc-AA MW values
+    Creates:
+        spps_materials_template.csv   — CSV template for materials MW values
         spps_materials_template.xlsx  — XLSX version for spreadsheet editing
+        spps_sequences_template.fasta — FASTA template for peptide sequences
+        spps_sequences_template.csv   — CSV template for peptide sequences
 
-    Fill these in and pass to --materials when running 'generate' or 'materials'.
+    Fill these in and pass to --materials / --input when running 'generate' or 'materials'.
     """
     import csv
     import openpyxl
@@ -31,14 +33,23 @@ def template(output_dir: str) -> None:
 
     headers = [
         'ResidueCode', 'ProtectionGroup', 'FmocMW_g_mol',
-        'FreeAA_MW_g_mol', 'StockConc_M', 'Notes'
+        'FreeAA_MW_g_mol', 'Density_g_mL', 'Notes'
     ]
 
     example_rows = [
-        ['A', '', '311.3', '71.08', '0.5', 'Fmoc-Ala-OH'],
-        ['G', '', '297.3', '57.05', '0.5', 'Fmoc-Gly-OH'],
-        ['C', 'Trt', '585.7', '103.14', '0.5', 'Fmoc-Cys(Trt)-OH'],
-        ['K', 'Boc', '468.6', '128.17', '0.5', 'Fmoc-Lys(Boc)-OH'],
+        # Amino acids (solid — leave Density_g_mL blank)
+        ['A',     '',    '311.3', '71.08',  '',      'Fmoc-Ala-OH'],
+        ['G',     '',    '297.3', '57.05',  '',      'Fmoc-Gly-OH'],
+        ['C',     'Trt', '585.7', '103.14', '',      'Fmoc-Cys(Trt)-OH'],
+        ['C',     'Acm', '446.5', '103.14', '',      'Fmoc-Cys(Acm)-OH — orthogonal, NOT removed by TFA'],
+        ['K',     'Boc', '468.6', '128.17', '',      'Fmoc-Lys(Boc)-OH'],
+        ['R',     'Pbf', '648.8', '156.19', '',      'Fmoc-Arg(Pbf)-OH'],
+        # Activators — solid (leave Density_g_mL blank)
+        ['HBTU',  '',    '379.3', '379.3',  '',      'Coupling activator — solid'],
+        ['OXYMA', '',    '142.1', '142.1',  '',      'Coupling additive — solid'],
+        # Activators / bases — liquid (fill Density_g_mL)
+        ['DIEA',  '',    '129.24','129.24', '0.742', 'Base — liquid (N,N-Diisopropylethylamine)'],
+        ['DIC',   '',    '126.2', '126.2',  '0.806', 'Coupling activator — liquid (N,N-Diisopropylcarbodiimide)'],
     ]
 
     # CSV template
@@ -47,11 +58,10 @@ def template(output_dir: str) -> None:
         writer = csv.writer(f)
         writer.writerow(headers)
         writer.writerows(example_rows)
-        # Blank rows for user to fill in
         for _ in range(20):
             writer.writerow([''] * len(headers))
 
-    console.print(f"  [green]CSV template:[/green] {csv_path}")
+    console.print(f"  [green]Materials CSV template:[/green]  {csv_path}")
 
     # XLSX template
     xlsx_path = out_path / 'spps_materials_template.xlsx'
@@ -64,8 +74,7 @@ def template(output_dir: str) -> None:
         left=thin_side, right=thin_side, top=thin_side, bottom=thin_side
     )
 
-    # Header row
-    col_widths = [14, 18, 18, 18, 14, 35]
+    col_widths = [14, 18, 18, 18, 14, 45]
     for col_idx, (header, width) in enumerate(zip(headers, col_widths), start=1):
         cell = ws.cell(row=1, column=col_idx, value=header)
         cell.font = Font(name='Calibri', size=13, bold=True, color='FFFFFF')
@@ -75,7 +84,6 @@ def template(output_dir: str) -> None:
         ws.column_dimensions[get_column_letter(col_idx)].width = width
     ws.row_dimensions[1].height = 28
 
-    # Example rows
     for row_idx, row_data in enumerate(example_rows, start=2):
         for col_idx, value in enumerate(row_data, start=1):
             cell = ws.cell(row=row_idx, column=col_idx, value=value)
@@ -85,7 +93,6 @@ def template(output_dir: str) -> None:
             if row_idx % 2 == 0:
                 cell.fill = PatternFill(fill_type='solid', fgColor='EBF5FB')
 
-    # Blank rows
     for row_idx in range(len(example_rows) + 2, len(example_rows) + 22):
         for col_idx in range(1, len(headers) + 1):
             cell = ws.cell(row=row_idx, column=col_idx, value='')
@@ -95,14 +102,55 @@ def template(output_dir: str) -> None:
     ws.freeze_panes = 'A2'
     wb.save(str(xlsx_path))
 
-    console.print(f"  [green]XLSX template:[/green] {xlsx_path}")
+    console.print(f"  [green]Materials XLSX template:[/green] {xlsx_path}")
+
+    # Sequence templates
+    fasta_path = out_path / 'spps_sequences_template.fasta'
+    fasta_content = (
+        "; SPPS Sequence Input Template — FASTA format\n"
+        "; Lines starting with ';' are comments and are ignored.\n"
+        "; Each peptide starts with a '>' header line followed by the sequence.\n"
+        "; Use bracket notation for protected residues, e.g. C(Trt), K(Boc), C(Acm).\n"
+        "; NOTE: C(Acm) carries an orthogonal protecting group not removed by TFA —\n"
+        ";       a separate post-synthesis deprotection step is required.\n"
+        ";\n"
+        ">Peptide_1\n"
+        "AC(Trt)DEFGHIK(Boc)\n"
+        ">Peptide_2\n"
+        "GLC(Acm)MVWS(tBu)\n"
+        ">Peptide_3\n"
+        "ALYQK(Boc)VFANIK(Boc)\n"
+    )
+    fasta_path.write_text(fasta_content, encoding='utf-8')
+    console.print(f"  [green]FASTA sequence template:[/green] {fasta_path}")
+
+    csv_seq_path = out_path / 'spps_sequences_template.csv'
+    csv_seq_content = (
+        "# SPPS Sequence Input Template — CSV format (Name,Sequence)\n"
+        "# Lines starting with '#' are ignored.\n"
+        "# Use bracket notation for protected residues, e.g. C(Trt), K(Boc), C(Acm).\n"
+        "# NOTE: C(Acm) carries an orthogonal protecting group not removed by TFA.\n"
+        "Peptide_1,AC(Trt)DEFGHIK(Boc)\n"
+        "Peptide_2,GLC(Acm)MVWS(tBu)\n"
+        "Peptide_3,ALYQK(Boc)VFANIK(Boc)\n"
+    )
+    csv_seq_path.write_text(csv_seq_content, encoding='utf-8')
+    console.print(f"  [green]CSV sequence template:[/green]  {csv_seq_path}")
 
     console.print(Panel(
-        "Fill in your Fmoc-AA molecular weights and pass the file to\n"
-        "  [bold]spps-assistant generate --materials <file>[/bold]\n"
-        "  [bold]spps-assistant materials --materials <file>[/bold]\n\n"
-        "Required columns: ResidueCode, ProtectionGroup, FmocMW_g_mol,\n"
-        "                  FreeAA_MW_g_mol, StockConc_M",
-        title="Materials Template",
+        "[bold]How to use the templates:[/bold]\n\n"
+        "[bold]1.[/bold] Fill in [bold]spps_materials_template.xlsx[/bold] with the molecular\n"
+        "   weights of your amino acids, activators, and bases.\n"
+        "   • Leave [bold]Density_g_mL[/bold] blank for solid reagents.\n"
+        "   • Fill in [bold]Density_g_mL[/bold] for liquid reagents (e.g. DIEA, DIC).\n\n"
+        "[bold]2.[/bold] Fill in [bold]spps_sequences_template.fasta[/bold] with your peptide\n"
+        "   sequences. Use bracket notation for protected residues:\n"
+        "   C(Trt), K(Boc), C(Acm), S(tBu) ...\n\n"
+        "[bold]3.[/bold] In the launcher, choose:\n"
+        "   • [bold]Option 1[/bold] — Generate synthesis guide (PDF + DOCX)\n"
+        "   • [bold]Option 2[/bold] — Generate materials report (XLSX)\n"
+        "   Both options will ask you to provide these files as input.\n\n"
+        "Accepted formats: materials (.xlsx or .csv) · sequences (.fasta or .csv)",
+        title="Input Templates",
         border_style="cyan",
     ))

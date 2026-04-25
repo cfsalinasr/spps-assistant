@@ -18,7 +18,7 @@ console = Console()
 @click.option('--export', 'export_path', default=None, type=click.Path(),
               help='Export residue library to a CSV file.')
 @click.option('--import', 'import_path', default=None, type=click.Path(exists=True),
-              help='Import residue library from a CSV file.')
+              help='Import materials library from a CSV or XLSX file.')
 @click.option('--reset', is_flag=True, default=False,
               help='Reset (drop and recreate) the database. DESTRUCTIVE.')
 @click.option('--add', 'add_token', default=None, type=str,
@@ -82,23 +82,25 @@ def db(
             )
             return
 
-        table = RichTable(title=f"Residue MW Library ({len(records)} records)")
+        table = RichTable(title=f"Materials Library ({len(records)} records)")
         table.add_column("Token", style="bold cyan")
         table.add_column("Base")
         table.add_column("Protection")
-        table.add_column("Fmoc-MW (g/mol)")
+        table.add_column("MW (g/mol)")
         table.add_column("Free MW (g/mol)")
-        table.add_column("Stock (M)")
+        table.add_column("Density (g/mL)")
         table.add_column("Notes")
 
         for rec in records:
+            density = rec.get('density_g_ml')
+            density_str = f"{density:.3f}" if density is not None else '—'
             table.add_row(
                 rec['token'],
                 rec['base_code'],
                 rec['protection'] or '—',
                 f"{rec['fmoc_mw']:.1f}",
                 f"{rec['free_mw']:.2f}",
-                f"{rec['stock_conc']:.2f}",
+                density_str,
                 rec.get('notes', ''),
             )
 

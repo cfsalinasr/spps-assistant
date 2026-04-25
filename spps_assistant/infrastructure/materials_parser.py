@@ -5,12 +5,23 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 
+def _parse_float(val, default: float) -> float:
+    """Parse float, accepting both '.' and ',' as decimal separator."""
+    if val is None or str(val).strip() == '':
+        return default
+    try:
+        return float(str(val).replace(',', '.'))
+    except (ValueError, TypeError):
+        return default
+
+
 def parse_materials_csv(path: Path) -> List[Dict]:
     """Parse a materials CSV file into a list of dicts.
 
     Expected columns (case-insensitive, flexible order):
         ResidueCode, ProtectionGroup, FmocMW_g_mol, FreeAA_MW_g_mol,
-        StockConc_M, Notes
+        Density_g_mL, Notes
+        (StockConc_M also accepted for backward compatibility)
 
     Args:
         path: Path to the CSV file
@@ -32,11 +43,7 @@ def parse_materials_csv(path: Path) -> List[Dict]:
         if reader.fieldnames is None:
             raise ValueError(f"Empty or invalid CSV: {path}")
 
-        # Normalize fieldnames to lowercase
-        fieldnames_lower = [fn.lower().strip() for fn in reader.fieldnames]
-
-        for row_num, row in enumerate(reader, start=2):
-            # Normalize keys
+        for row in reader:
             norm_row = {k.lower().strip(): v.strip() for k, v in row.items() if k}
 
             residue_code = (
@@ -46,7 +53,7 @@ def parse_materials_csv(path: Path) -> List[Dict]:
             ).strip().upper()
 
             if not residue_code:
-                continue  # Skip empty rows
+                continue
 
             protection = (
                 norm_row.get('protectiongroup') or
@@ -54,43 +61,39 @@ def parse_materials_csv(path: Path) -> List[Dict]:
                 norm_row.get('protection', '')
             ).strip()
 
-            try:
-                fmoc_mw = float(
-                    norm_row.get('fmocmw_g_mol') or
-                    norm_row.get('fmoc_mw_g_mol') or
-                    norm_row.get('fmocmw') or
-                    '0'
-                )
-            except (ValueError, TypeError):
-                fmoc_mw = 0.0
+            fmoc_mw = _parse_float(
+                norm_row.get('fmocmw_g_mol') or
+                norm_row.get('fmoc_mw_g_mol') or
+                norm_row.get('fmocmw') or
+                norm_row.get('mw_g_mol') or '',
+                0.0
+            )
 
-            try:
-                free_mw = float(
-                    norm_row.get('freeaa_mw_g_mol') or
-                    norm_row.get('free_mw_g_mol') or
-                    norm_row.get('freemw') or
-                    '0'
-                )
-            except (ValueError, TypeError):
-                free_mw = 0.0
+            free_mw = _parse_float(
+                norm_row.get('freeaa_mw_g_mol') or
+                norm_row.get('free_mw_g_mol') or
+                norm_row.get('freemw') or '',
+                0.0
+            )
 
-            try:
-                stock_conc = float(
-                    norm_row.get('stockconc_m') or
-                    norm_row.get('stock_conc_m') or
-                    norm_row.get('stock_conc') or
-                    '0.5'
-                )
-            except (ValueError, TypeError):
-                stock_conc = 0.5
+            stock_conc = _parse_float(
+                norm_row.get('stockconc_m') or
+                norm_row.get('stock_conc_m') or
+                norm_row.get('stock_conc') or '',
+                0.5
+            )
+
+            density_g_ml: Optional[float] = None
+            raw_density = (
+                norm_row.get('density_g_ml') or
+                norm_row.get('density') or ''
+            )
+            if raw_density:
+                density_g_ml = _parse_float(raw_density, None)
 
             notes = norm_row.get('notes', '')
 
-            # Build token key: "A" or "C(Trt)"
-            if protection:
-                token = f"{residue_code}({protection})"
-            else:
-                token = residue_code
+            token = f"{residue_code}({protection})" if protection else residue_code
 
             results.append({
                 'token': token,
@@ -99,6 +102,7 @@ def parse_materials_csv(path: Path) -> List[Dict]:
                 'fmoc_mw': fmoc_mw,
                 'free_mw': free_mw,
                 'stock_conc': stock_conc,
+                'density_g_ml': density_g_ml,
                 'notes': notes,
             })
 
@@ -107,8 +111,6 @@ def parse_materials_csv(path: Path) -> List[Dict]:
 
 def parse_materials_xlsx(path: Path) -> List[Dict]:
     """Parse a materials XLSX file.
-
-    Falls back to treating the first sheet like the CSV format.
 
     Args:
         path: Path to the XLSX file
@@ -137,8 +139,10 @@ def parse_materials_xlsx(path: Path) -> List[Dict]:
 
     results = []
     for row in rows_iter:
-        row_dict = {headers[i]: (str(row[i]).strip() if row[i] is not None else '')
-                    for i in range(min(len(headers), len(row)))}
+        row_dict = {
+            headers[i]: (str(row[i]).strip() if row[i] is not None else '')
+            for i in range(min(len(headers), len(row)))
+        }
 
         residue_code = (
             row_dict.get('residuecode') or
@@ -155,21 +159,28 @@ def parse_materials_xlsx(path: Path) -> List[Dict]:
             row_dict.get('protection', '')
         ).strip()
 
-        def _safe_float(val: str, default: float) -> float:
-            try:
-                return float(val) if val else default
-            except ValueError:
-                return default
+        fmoc_mw = _parse_float(
+            row_dict.get('fmocmw_g_mol') or
+            row_dict.get('fmoc_mw_g_mol') or
+            row_dict.get('mw_g_mol') or '',
+            0.0
+        )
+        free_mw = _parse_float(
+            row_dict.get('freeaa_mw_g_mol') or
+            row_dict.get('free_mw_g_mol') or '',
+            0.0
+        )
+        stock_conc = _parse_float(
+            row_dict.get('stockconc_m') or
+            row_dict.get('stock_conc_m') or '',
+            0.5
+        )
 
-        fmoc_mw = _safe_float(
-            row_dict.get('fmocmw_g_mol') or row_dict.get('fmoc_mw_g_mol', ''), 0.0
-        )
-        free_mw = _safe_float(
-            row_dict.get('freeaa_mw_g_mol') or row_dict.get('free_mw_g_mol', ''), 0.0
-        )
-        stock_conc = _safe_float(
-            row_dict.get('stockconc_m') or row_dict.get('stock_conc_m', ''), 0.5
-        )
+        density_g_ml: Optional[float] = None
+        raw_density = row_dict.get('density_g_ml') or row_dict.get('density') or ''
+        if raw_density:
+            density_g_ml = _parse_float(raw_density, None)
+
         notes = row_dict.get('notes', '')
 
         token = f"{residue_code}({protection})" if protection else residue_code
@@ -181,6 +192,7 @@ def parse_materials_xlsx(path: Path) -> List[Dict]:
             'fmoc_mw': fmoc_mw,
             'free_mw': free_mw,
             'stock_conc': stock_conc,
+            'density_g_ml': density_g_ml,
             'notes': notes,
         })
 
@@ -204,7 +216,6 @@ def load_materials_file(path: Path) -> List[Dict]:
     elif suffix in ('.csv', '.txt'):
         return parse_materials_csv(path)
     else:
-        # Try CSV first, then XLSX
         try:
             return parse_materials_csv(path)
         except Exception:

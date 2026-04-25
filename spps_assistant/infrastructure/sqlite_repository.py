@@ -50,6 +50,14 @@ def _init_db(db_path: Path = _DB_PATH) -> None:
                     metadata_json   TEXT NOT NULL DEFAULT '{}'
                 );
             """)
+        # Migration: add density_g_ml to existing databases that predate this column
+        try:
+            conn.execute(
+                "ALTER TABLE residue_mw ADD COLUMN density_g_ml REAL DEFAULT NULL"
+            )
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Column already exists
     finally:
         conn.close()
 
@@ -84,6 +92,7 @@ class SQLiteRepository(DatabaseRepository):
         free_mw: float,
         stock_conc: float = 0.5,
         notes: str = '',
+        density_g_ml: Optional[float] = None,
     ) -> None:
         """Upsert a residue MW record."""
         conn = self._conn()
@@ -92,17 +101,20 @@ class SQLiteRepository(DatabaseRepository):
                 conn.execute(
                     """
                     INSERT INTO residue_mw
-                        (token, base_code, protection, fmoc_mw, free_mw, stock_conc, notes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                        (token, base_code, protection, fmoc_mw, free_mw,
+                         stock_conc, notes, density_g_ml)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(token) DO UPDATE SET
-                        base_code  = excluded.base_code,
-                        protection = excluded.protection,
-                        fmoc_mw    = excluded.fmoc_mw,
-                        free_mw    = excluded.free_mw,
-                        stock_conc = excluded.stock_conc,
-                        notes      = excluded.notes
+                        base_code    = excluded.base_code,
+                        protection   = excluded.protection,
+                        fmoc_mw      = excluded.fmoc_mw,
+                        free_mw      = excluded.free_mw,
+                        stock_conc   = excluded.stock_conc,
+                        notes        = excluded.notes,
+                        density_g_ml = excluded.density_g_ml
                     """,
-                    (token, base_code, protection, fmoc_mw, free_mw, stock_conc, notes),
+                    (token, base_code, protection, fmoc_mw, free_mw,
+                     stock_conc, notes, density_g_ml),
                 )
         finally:
             conn.close()
@@ -199,16 +211,16 @@ class SQLiteRepository(DatabaseRepository):
             writer = csv.DictWriter(
                 f,
                 fieldnames=['token', 'base_code', 'protection', 'fmoc_mw',
-                            'free_mw', 'stock_conc', 'notes'],
+                            'free_mw', 'stock_conc', 'density_g_ml', 'notes'],
             )
             writer.writeheader()
             writer.writerows(rows)
 
     def import_csv(self, path: Path) -> int:
-        """Import residue library from CSV. Returns number of rows imported."""
-        from spps_assistant.infrastructure.materials_parser import parse_materials_csv
+        """Import residue library from a CSV or XLSX file. Returns number of rows imported."""
+        from spps_assistant.infrastructure.materials_parser import load_materials_file
         path = Path(path)
-        records = parse_materials_csv(path)
+        records = load_materials_file(path)
         count = 0
         for rec in records:
             self.save_residue(
@@ -219,6 +231,7 @@ class SQLiteRepository(DatabaseRepository):
                 free_mw=rec['free_mw'],
                 stock_conc=rec.get('stock_conc', 0.5),
                 notes=rec.get('notes', ''),
+                density_g_ml=rec.get('density_g_ml'),
             )
             count += 1
         return count

@@ -9,6 +9,12 @@ tone_instructions: >
   stoichiometric calculations, wrong sequence reversals, or data integrity
   problems in the persistent database. Correctness is paramount.
 
+knowledge_base:
+  learnings:
+    scope: local
+  pull_requests:
+    scope: local
+
 reviews:
   profile: "assertive"
   request_changes_workflow: true
@@ -16,6 +22,17 @@ reviews:
   poem: false
   review_status: true
   collapse_walkthrough: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+    ignore_title_keywords:
+      - "WIP"
+      - "wip"
+      - "DO NOT MERGE"
+      - "DRAFT"
 
   path_instructions:
     - path: "spps_assistant/domain/**"
@@ -27,29 +44,96 @@ reviews:
         original Spys.pl source). Any change to a formula must include the scientific
         reference or derivation.
 
+    - path: "spps_assistant/application/**"
+      instructions: >
+        Application layer must only depend on domain models and abstract ports — never
+        on infrastructure or CLI modules. Flag any direct instantiation of infrastructure
+        classes (SQLiteRepository, pdf_generator, etc.) inside this layer. Use-case
+        methods must remain free of I/O; all side effects are delegated through ports.
+
+    - path: "spps_assistant/cli/**"
+      instructions: >
+        CLI commands must contain no business logic — they orchestrate calls to
+        application use cases only. Flag any stoichiometry, MW, or sequence calculation
+        performed directly in a CLI file. All user-supplied paths and strings must be
+        validated before use. Verify there are no shell-injection risks (no use of
+        shell=True with user input, no f-string interpolation into subprocess calls).
+
+    - path: "spps_assistant/infrastructure/fasta_parser.py"
+      instructions: >
+        This parser is the entry point for all peptide sequences. Any change must
+        preserve correct handling of: bracket-notation protected residues (C(Trt),
+        K(Boc), C(Acm)), semicolon comment lines, and multi-sequence files. A silent
+        skip of a malformed sequence is a critical bug — the parser must raise or warn,
+        never silently drop data.
+
+    - path: "spps_assistant/infrastructure/materials_parser.py"
+      instructions: >
+        This parser handles decimal separators from multiple locales — both '.' and ','
+        must be accepted as decimal points (via _parse_float). Flag any float() call
+        that does not go through _parse_float. Changes must be backward-compatible with
+        files that contain the legacy StockConc_M column. Verify that density_g_ml is
+        returned as None (not 0.0) when the field is blank, since downstream code uses
+        None to distinguish liquid from solid reagents.
+
+    - path: "spps_assistant/infrastructure/sqlite_repository.py"
+      instructions: >
+        Check for SQL injection risks — all queries must use parameterised statements
+        (? placeholders), never f-strings or .format() with user data. Any schema change
+        must include a safe migration path (ALTER TABLE ... ADD COLUMN with a DEFAULT,
+        wrapped in a try/except OperationalError for idempotency). Verify that all
+        connections are closed in finally blocks.
+
     - path: "spps_assistant/infrastructure/pdf_generator.py"
       instructions: >
         GMP compliance: every coupling cycle must start on a new page, checkbox cells
         must use literal '[ ]' text, and all table columns must fit within page width.
         Verify that deprotection and coupling table rows match the SRS spec.
 
-    - path: "spps_assistant/infrastructure/sqlite_repository.py"
+    - path: "spps_assistant/infrastructure/docx_generator.py"
       instructions: >
-        Check for SQL injection risks — all queries must use parameterised statements
-        (? placeholders), never f-strings or .format() with user data.
+        GMP compliance (same requirements as pdf_generator): each coupling cycle on its
+        own page, '[ ]' checkbox literals preserved, column widths within page margins.
+        DOCX output is the primary GMP record — any layout regression is a compliance
+        defect. Flag string-literal duplication (repeated style names, cell text) that
+        should be extracted to constants.
+
+    - path: "spps_assistant/infrastructure/xlsx_generator.py"
+      instructions: >
+        This file produces the materials shopping-list report. Verify that all numeric
+        values written to cells use explicit number formats (not plain strings), column
+        headers match the documented spec, and no division-by-zero can occur in mass or
+        volume calculations. Flag any hardcoded path or username.
+
+    - path: "spps_assistant/infrastructure/yaml_config.py"
+      instructions: >
+        Config values are persisted to ~/.spps_assistant/spps_config.yaml. Flag any
+        default value that contains a hardcoded username or absolute path. Verify that
+        loading a corrupt or missing config file raises a clear error rather than
+        producing a silent incorrect default.
 
     - path: "tests/**"
       instructions: >
         Tests must not mock the domain logic. Infrastructure tests may use tmp_path
         fixtures. Any new domain function must have a corresponding unit test that
         validates against a known-good value (ideally cross-checked with original
-        Spys.pl output).
+        Spys.pl output). Flag tests that use approximate float assertions without a
+        stated tolerance (use pytest.approx). The project targets ≥90% line coverage —
+        flag PRs that reduce coverage on any module that was previously above 90%.
 
-  auto_review:
-    enabled: true
-    drafts: false
-    base_branches:
-      - main
+    - path: ".github/workflows/**"
+      instructions: >
+        All third-party actions must be pinned to a full commit SHA, not a branch or
+        tag (supply-chain security). SONAR_TOKEN and GITHUB_TOKEN must only be passed
+        as environment variables to the steps that need them, never echoed or logged.
+        Flag any step that uses shell=true with variable interpolation.
+
+    - path: "pyproject.toml"
+      instructions: >
+        Flag any dependency version constraint that is loosened (e.g. >= changed to *,
+        or a minimum version lowered). New runtime dependencies must have a documented
+        reason. Dev dependencies should remain in the [dev] optional group and not bleed
+        into the main dependency list.
 
 chat:
   auto_reply: true

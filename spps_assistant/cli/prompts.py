@@ -178,22 +178,13 @@ def prompt_synthesis_config(config_defaults: Optional[Dict] = None) -> Synthesis
     )
 
     aa_eq = click.prompt(
-        "  AA equivalents",
-        default=float(d.get('aa_equivalents', 3.0)),
+        "  Reactant excess (applied to all reagents; DIEA and Pyridine scale via\n"
+        "  the Equivalents column in your materials file — DIEA ×2, Pyridine ×20)",
+        default=float(d.get('aa_equivalents', 10.0)),
         type=float,
     )
-
-    act_eq = click.prompt(
-        "  Activator equivalents",
-        default=float(d.get('activator_equivalents', 3.0)),
-        type=float,
-    )
-
-    base_eq = click.prompt(
-        "  Base equivalents",
-        default=float(d.get('base_equivalents', 6.0)),
-        type=float,
-    )
+    act_eq = aa_eq   # activator equivalents now derived from per-reagent multiplier
+    base_eq = aa_eq  # base equivalents now derived from per-reagent multiplier
 
     include_bb = click.confirm(
         "  Include Bromophenol Blue test?",
@@ -335,9 +326,9 @@ def display_run_summary(
         f"[bold]Base:[/bold] {config.base}  "
         f"[bold]Mode:[/bold] {config.volume_mode}  "
         f"[bold]Oxyma:[/bold] {'Yes' if config.use_oxyma else 'No'}\n"
-        f"[bold]AA eq:[/bold] {config.aa_equivalents}  "
-        f"[bold]Act. eq:[/bold] {config.activator_equivalents}  "
-        f"[bold]Base eq:[/bold] {config.base_equivalents}  "
+        f"[bold]Reactant excess:[/bold] {config.aa_equivalents}×  "
+        f"(DIEA ×2 = {config.aa_equivalents * 2:.0f} eq, "
+        f"Pyridine ×20 = {config.aa_equivalents * 20:.0f} eq)  "
         f"[bold]Deprotection:[/bold] {config.deprotection_reagent}"
     )
     console.print(Panel(cfg_text, title="Synthesis Configuration", border_style="blue"))

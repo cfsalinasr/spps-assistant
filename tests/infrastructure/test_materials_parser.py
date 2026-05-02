@@ -139,6 +139,28 @@ class TestParseMaterialsCSV:
         rows = parse_materials_csv(f)
         assert rows[0]['fmoc_mw'] == pytest.approx(0.0)
 
+    def test_equivalents_multiplier_parsed(self, tmp_path):
+        f = tmp_path / 'mat.csv'
+        f.write_text(
+            'ResidueCode,ProtectionGroup,FmocMW_g_mol,FreeAA_MW_g_mol,Density_g_mL,Equivalents,Notes\n'
+            'A,,311.3,71.08,,1,Fmoc-Ala-OH\n'
+            'DIEA,,129.24,129.24,0.742,2,Base liquid\n'
+            'Pyridine,,79.1,79.1,0.978,20,Catalyst\n'
+        )
+        rows = parse_materials_csv(f)
+        assert rows[0]['equivalents_multiplier'] == pytest.approx(1.0)
+        assert rows[1]['equivalents_multiplier'] == pytest.approx(2.0)
+        assert rows[2]['equivalents_multiplier'] == pytest.approx(20.0)
+
+    def test_equivalents_multiplier_defaults_to_one_when_missing(self, tmp_path):
+        f = tmp_path / 'mat.csv'
+        f.write_text(
+            'ResidueCode,ProtectionGroup,FmocMW_g_mol,FreeAA_MW_g_mol,Density_g_mL,Notes\n'
+            'A,,311.3,71.08,,Fmoc-Ala-OH\n'
+        )
+        rows = parse_materials_csv(f)
+        assert rows[0]['equivalents_multiplier'] == pytest.approx(1.0)
+
 
 # ── parse_materials_xlsx ──────────────────────────────────────────────────────
 

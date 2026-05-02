@@ -47,8 +47,6 @@ def setup() -> None:
         'base': synth_config.base,
         'deprotection_reagent': synth_config.deprotection_reagent,
         'aa_equivalents': synth_config.aa_equivalents,
-        'activator_equivalents': synth_config.activator_equivalents,
-        'base_equivalents': synth_config.base_equivalents,
         'include_bb_test': synth_config.include_bb_test,
         'include_kaiser_test': synth_config.include_kaiser_test,
         'starting_vessel_number': synth_config.starting_vessel_number,

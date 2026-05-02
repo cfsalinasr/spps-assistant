@@ -91,6 +91,12 @@ def parse_materials_csv(path: Path) -> List[Dict]:
             if raw_density:
                 density_g_ml = _parse_float(raw_density, None)
 
+            equivalents_multiplier = _parse_float(
+                norm_row.get('equivalents') or
+                norm_row.get('equivalents_multiplier') or '',
+                1.0
+            )
+
             notes = norm_row.get('notes', '')
 
             token = f"{residue_code}({protection})" if protection else residue_code
@@ -103,6 +109,7 @@ def parse_materials_csv(path: Path) -> List[Dict]:
                 'free_mw': free_mw,
                 'stock_conc': stock_conc,
                 'density_g_ml': density_g_ml,
+                'equivalents_multiplier': equivalents_multiplier,
                 'notes': notes,
             })
 
@@ -181,6 +188,12 @@ def parse_materials_xlsx(path: Path) -> List[Dict]:
         if raw_density:
             density_g_ml = _parse_float(raw_density, None)
 
+        equivalents_multiplier = _parse_float(
+            row_dict.get('equivalents') or
+            row_dict.get('equivalents_multiplier') or '',
+            1.0
+        )
+
         notes = row_dict.get('notes', '')
 
         token = f"{residue_code}({protection})" if protection else residue_code
@@ -193,6 +206,7 @@ def parse_materials_xlsx(path: Path) -> List[Dict]:
             'free_mw': free_mw,
             'stock_conc': stock_conc,
             'density_g_ml': density_g_ml,
+            'equivalents_multiplier': equivalents_multiplier,
             'notes': notes,
         })
 

@@ -49,12 +49,14 @@ def build_materials_rows(
         if not count_per_vessel:
             continue
 
+        # Effective equivalents: global reactant excess × per-reagent multiplier
+        eff_eq = config.aa_equivalents * res_info.equivalents_multiplier
+
         # Compute total mmol needed
         total_mmol = 0.0
         for vessel, (v_obj, occurrences) in count_per_vessel.items():
             resin_mmol = v_obj.resin_mass_g * v_obj.substitution_mmol_g
-            # equivalents × resin_mmol per occurrence
-            total_mmol += config.aa_equivalents * resin_mmol * occurrences
+            total_mmol += eff_eq * resin_mmol * occurrences
 
         mass_mg = calc_mass_mg(total_mmol, res_info.fmoc_mw)
 
@@ -69,8 +71,14 @@ def build_materials_rows(
                 / len(count_per_vessel)
             )
             volume_ml = calc_volume_stoichiometry(
-                n_uses, config.aa_equivalents, avg_resin_mmol, res_info.stock_conc
+                n_uses, eff_eq, avg_resin_mmol, res_info.stock_conc
             )
+
+        # For liquid reagents: report volume in µL (pipette, no weighing)
+        volume_ul = None
+        if res_info.density_g_ml is not None and res_info.density_g_ml > 0:
+            # volume_µL = mass_mg / density_g_mL
+            volume_ul = round(mass_mg / res_info.density_g_ml, 1)
 
         try:
             base, prot = parse_token(tok)
@@ -80,13 +88,17 @@ def build_materials_rows(
         three_letter = THREE_LETTER_CODE.get(base, base)
         display_name = three_letter if not prot else f"{three_letter}({prot})"
 
-        formula = (
-            f"V = ({n_uses} × {config.aa_equivalents} eq × "
-            f"{avg_resin_mmol if config.volume_mode != 'legacy' else 'N/A':.4f} mmol) "
-            f"/ {res_info.stock_conc} M"
-            if config.volume_mode != 'legacy'
-            else f"V = {n_uses} uses × 2 mL"
-        )
+        if volume_ul is not None:
+            formula = (
+                f"V(µL) = {mass_mg:.2f} mg / {res_info.density_g_ml} g/mL = {volume_ul:.1f} µL"
+            )
+        elif config.volume_mode != 'legacy':
+            formula = (
+                f"V = ({n_uses} × {eff_eq} eq × {avg_resin_mmol:.4f} mmol) "
+                f"/ {res_info.stock_conc} M"
+            )
+        else:
+            formula = f"V = {n_uses} uses × 2 mL"
 
         rows.append(MaterialsRow(
             token=tok,
@@ -98,6 +110,7 @@ def build_materials_rows(
             volume_ml=round(volume_ml, 3),
             notes=f"Fmoc-{display_name}-OH",
             formula=formula,
+            volume_ul=volume_ul,
         ))
 
     return rows

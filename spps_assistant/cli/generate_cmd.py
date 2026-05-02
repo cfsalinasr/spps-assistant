@@ -13,7 +13,7 @@ console = Console()
 
 @click.command('generate')
 @click.option('--input', '-i', 'input_path', required=True, type=click.Path(exists=True),
-              help='FASTA file (or plain text/CSV) with peptide sequences.')
+              help='FASTA file with peptide sequences.')
 @click.option('--materials', '-m', 'materials_path', default=None, type=click.Path(exists=True),
               help='Optional materials CSV/XLSX with pre-defined Fmoc-MW values.')
 @click.option('--output', '-o', 'output_dir', default=None, type=click.Path(),
@@ -143,6 +143,8 @@ def generate(
                     fmoc_mw=rec['fmoc_mw'],
                     free_mw=rec['free_mw'],
                     stock_conc=rec.get('stock_conc', 0.5),
+                    density_g_ml=rec.get('density_g_ml'),
+                    equivalents_multiplier=rec.get('equivalents_multiplier', 1.0),
                 )
             console.print(f"  Loaded {len(residue_info_map)} residues from materials file.")
         except Exception as e:

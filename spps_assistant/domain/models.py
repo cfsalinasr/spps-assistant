@@ -11,7 +11,9 @@ class ResidueInfo:
     protection: str      # e.g. "Trt" or ""
     fmoc_mw: float       # g/mol for stoichiometry
     free_mw: float       # g/mol for peptide MW
-    stock_conc: float = 0.5   # M, default 0.5 M in DMF
+    stock_conc: float = 0.5          # M, default 0.5 M in DMF
+    density_g_ml: Optional[float] = None   # g/mL for liquids; None = solid
+    equivalents_multiplier: float = 1.0    # scales the global reactant excess
 
 
 @dataclass
@@ -95,3 +97,4 @@ class MaterialsRow:
     volume_ml: float
     notes: str = ''
     formula: str = ''
+    volume_ul: Optional[float] = None   # set for liquid reagents; shows instead of mass_mg

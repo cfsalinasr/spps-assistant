@@ -74,10 +74,10 @@ def generate_materials_xlsx(
     # ------------------------------------------------------------------ #
     headers = [
         'Residue', 'Protection', 'Fmoc-MW (g/mol)', 'mmol needed',
-        'Mass to weigh (mg)', 'Stock Conc (M)', 'Volume (mL)',
+        'Mass (mg) / — liquid', 'Stock Conc (M)', 'Volume (mL / µL)',
         'Formula', 'Notes',
     ]
-    col_widths = [12, 14, 18, 14, 20, 16, 14, 45, 30]
+    col_widths = [12, 14, 18, 14, 20, 16, 16, 45, 30]
 
     for col_idx, (header, width) in enumerate(zip(headers, col_widths), start=1):
         cell = ws.cell(row=2, column=col_idx, value=header)
@@ -95,15 +95,24 @@ def generate_materials_xlsx(
     for row_offset, mat in enumerate(materials_rows):
         row_num = row_offset + 3
         is_alt = row_offset % 2 == 1
+        is_liquid = mat.volume_ul is not None
+
+        # For liquid reagents show µL instead of mass; solids show mass in mg
+        if is_liquid:
+            mass_cell_value = '—'
+            volume_cell_value = f"{mat.volume_ul:.1f} µL"
+        else:
+            mass_cell_value = mat.mass_mg
+            volume_cell_value = mat.volume_ml
 
         row_data = [
             mat.token,
             mat.protection,
             mat.fmoc_mw,
             mat.mmol_needed,
-            mat.mass_mg,
+            mass_cell_value,
             mat.stock_conc,
-            mat.volume_ml,
+            volume_cell_value,
             mat.formula,
             mat.notes,
         ]
@@ -119,17 +128,20 @@ def generate_materials_xlsx(
             )
             if is_alt:
                 cell.fill = _alt_fill()
+            elif is_liquid:
+                # Subtle yellow tint for liquid rows so lab staff spot them instantly
+                cell.fill = PatternFill(fill_type='solid', fgColor='FEF9E7')
 
-            # Number formatting for numeric columns
+            # Number formatting for numeric columns (skip for liquid overrides)
             if col_idx == 3:   # Fmoc-MW
                 cell.number_format = '0.0'
             elif col_idx == 4: # mmol needed
                 cell.number_format = '0.0000'
-            elif col_idx == 5: # Mass mg
+            elif col_idx == 5 and not is_liquid:  # Mass mg
                 cell.number_format = '0.00'
             elif col_idx == 6: # Stock conc
                 cell.number_format = '0.00'
-            elif col_idx == 7: # Volume mL
+            elif col_idx == 7 and not is_liquid:  # Volume mL
                 cell.number_format = '0.000'
 
         ws.row_dimensions[row_num].height = 22

@@ -81,10 +81,10 @@ class TestTemplateCommand:
         assert result.exit_code == 0
         assert (tmp_path / 'spps_sequences_template.fasta').exists()
 
-    def test_creates_csv_sequence_template(self, runner, tmp_path):
+    def test_no_csv_sequence_template(self, runner, tmp_path):
         result = runner.invoke(cli, ['template', '--output-dir', str(tmp_path)])
         assert result.exit_code == 0
-        assert (tmp_path / 'spps_sequences_template.csv').exists()
+        assert not (tmp_path / 'spps_sequences_template.csv').exists()
 
     def test_materials_csv_has_density_column(self, runner, tmp_path):
         runner.invoke(cli, ['template', '--output-dir', str(tmp_path)])
@@ -93,6 +93,14 @@ class TestTemplateCommand:
             reader = csv.reader(f)
             headers = next(reader)
         assert 'Density_g_mL' in headers
+
+    def test_materials_csv_has_equivalents_column(self, runner, tmp_path):
+        runner.invoke(cli, ['template', '--output-dir', str(tmp_path)])
+        p = tmp_path / 'spps_materials_template.csv'
+        with open(p, newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            headers = next(reader)
+        assert 'Equivalents' in headers
 
     def test_fasta_template_has_no_bare_separator(self, runner, tmp_path):
         runner.invoke(cli, ['template', '--output-dir', str(tmp_path)])

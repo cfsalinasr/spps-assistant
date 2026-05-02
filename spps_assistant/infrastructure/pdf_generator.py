@@ -652,15 +652,19 @@ def generate_materials_pdf(
     # Materials table
     mat_data = [[
         'Residue', 'Protection', 'Fmoc-MW (g/mol)',
-        'mmol needed', 'Mass (mg)', 'Stock (M)', 'Volume (mL)', 'Notes'
+        'mmol needed', 'Mass (mg) / µL', 'Stock (M)', 'Volume (mL)', 'Notes'
     ]]
     for row in materials_rows:
+        if row.volume_ul is not None:
+            quantity_cell = f"{row.volume_ul:.1f} µL"
+        else:
+            quantity_cell = f"{row.mass_mg:.2f} mg"
         mat_data.append([
             row.token,
             row.protection,
             f"{row.fmoc_mw:.1f}",
             f"{row.mmol_needed:.4f}",
-            f"{row.mass_mg:.2f}",
+            quantity_cell,
             f"{row.stock_conc:.2f}",
             f"{row.volume_ml:.3f}",
             row.notes,

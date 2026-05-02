@@ -13,7 +13,7 @@ console = Console()
 
 @click.command('materials')
 @click.option('--input', '-i', 'input_path', required=True, type=click.Path(exists=True),
-              help='FASTA or plain-text file with peptide sequences.')
+              help='FASTA file with peptide sequences.')
 @click.option('--week', '-w', default=None, type=int,
               help='Week number for labeling the materials list.')
 @click.option('--output', '-o', 'output_dir', default=None, type=click.Path(),
@@ -90,6 +90,8 @@ def materials(
                     token=tok, base_code=rec['base_code'],
                     protection=rec['protection'], fmoc_mw=rec['fmoc_mw'],
                     free_mw=rec['free_mw'], stock_conc=rec.get('stock_conc', 0.5),
+                    density_g_ml=rec.get('density_g_ml'),
+                    equivalents_multiplier=rec.get('equivalents_multiplier', 1.0),
                 )
         except Exception as e:
             console.print(f"[yellow]Warning: {e}[/yellow]")

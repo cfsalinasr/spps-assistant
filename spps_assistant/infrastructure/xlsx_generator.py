@@ -20,15 +20,18 @@ COLOR_ACCENT     = '1A5276'
 
 
 def _thin_border() -> Border:
+    """Return a thin grey border for all four sides of a cell."""
     side = Side(style='thin', color='AAAAAA')
     return Border(left=side, right=side, top=side, bottom=side)
 
 
 def _header_fill() -> PatternFill:
+    """Return the dark-blue solid fill used for header rows."""
     return PatternFill(fill_type='solid', fgColor=COLOR_HEADER_BG)
 
 
 def _alt_fill() -> PatternFill:
+    """Return the light-blue solid fill used for alternating data rows."""
     return PatternFill(fill_type='solid', fgColor=COLOR_ALT_ROW)
 
 

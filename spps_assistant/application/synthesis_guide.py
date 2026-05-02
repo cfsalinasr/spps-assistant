@@ -88,6 +88,7 @@ class SynthesisGuideUseCase:
     """Orchestrates the full SPPS synthesis guide generation workflow."""
 
     def __init__(self, db: DatabaseRepository, config_repo: ConfigRepository):
+        """Initialise with a database repository and a config repository."""
         self.db = db
         self.config_repo = config_repo
 

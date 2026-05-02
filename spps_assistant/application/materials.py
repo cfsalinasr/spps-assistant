@@ -120,6 +120,7 @@ class MaterialsUseCase:
     """Weekly materials explosion use case."""
 
     def __init__(self, db: DatabaseRepository):
+        """Initialise with a database repository for residue lookups."""
         self.db = db
 
     def run(

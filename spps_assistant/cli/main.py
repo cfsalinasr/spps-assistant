@@ -29,6 +29,7 @@ def cli() -> None:
 
 # Register subcommands lazily to avoid circular imports
 def _register_commands() -> None:
+    """Attach all CLI subcommands to the root group."""
     from spps_assistant.cli.setup_cmd import setup
     from spps_assistant.cli.generate_cmd import generate
     from spps_assistant.cli.materials_cmd import materials

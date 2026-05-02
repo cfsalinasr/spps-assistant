@@ -24,6 +24,7 @@ from spps_assistant.domain.stoichiometry import (
 
 
 def _token_to_3letter(token: str) -> str:
+    """Convert a bracket-notation token (e.g. 'C(Trt)') to its 3-letter display form."""
     from spps_assistant.domain.sequence import parse_token
     try:
         base, prot = parse_token(token)
@@ -120,6 +121,7 @@ def _add_table_with_header(doc: Document, data: List[List[str]],
 
 
 def _add_heading(doc: Document, text: str, level: int = 1) -> None:
+    """Add a bold heading paragraph to *doc* at the given heading level."""
     para = doc.add_paragraph(text)
     run = para.runs[0] if para.runs else para.add_run(text)
     run.bold = True
@@ -149,6 +151,7 @@ def _build_coupling_label(config: SynthesisConfig, token: str) -> str:
 
 def _build_cover(doc: Document, synthesis_name: str, vessels: List[Vessel],
                  yield_results: List[YieldResult]) -> None:
+    """Append the cover page (title, metadata table, vessel summary) to *doc*."""
     doc.add_heading('SPPS Synthesis Guide', 0)
     doc.add_heading(synthesis_name, 1)
 

@@ -16,6 +16,7 @@ _DB_PATH = _DB_DIR / 'spps_database.db'
 
 
 def _get_connection(db_path: Path = _DB_PATH) -> sqlite3.Connection:
+    """Open (or create) the SQLite database and return a Row-factory connection."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
@@ -73,10 +74,12 @@ class SQLiteRepository(DatabaseRepository):
     """
 
     def __init__(self, db_path: Path = _DB_PATH):
+        """Initialise the repository and ensure the schema exists."""
         self._db_path = Path(db_path)
         _init_db(self._db_path)
 
     def _conn(self) -> sqlite3.Connection:
+        """Return a fresh database connection for this repository instance."""
         return _get_connection(self._db_path)
 
     # ------------------------------------------------------------------ #
@@ -155,6 +158,7 @@ class SQLiteRepository(DatabaseRepository):
     # ------------------------------------------------------------------ #
 
     def save_default(self, key: str, value: str) -> None:
+        """Upsert a key/value synthesis default."""
         conn = self._conn()
         try:
             with conn:
@@ -170,6 +174,7 @@ class SQLiteRepository(DatabaseRepository):
             conn.close()
 
     def get_default(self, key: str) -> Optional[str]:
+        """Retrieve a synthesis default value by key, or None if absent."""
         conn = self._conn()
         try:
             row = conn.execute(
@@ -184,6 +189,7 @@ class SQLiteRepository(DatabaseRepository):
     # ------------------------------------------------------------------ #
 
     def log_synthesis(self, synthesis_name: str, metadata: Dict[str, Any]) -> None:
+        """Append a synthesis run record with today's date and JSON metadata."""
         today = date.today().isoformat()
         conn = self._conn()
         try:

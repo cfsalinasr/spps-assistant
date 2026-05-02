@@ -152,6 +152,7 @@ def calc_pI(tokens: List[str], pka_values: Dict[str, float]) -> float:
         Estimated pI
     """
     def _charge_at_pH(pH: float) -> float:
+        """Return the net charge of the peptide at the given pH."""
         ch = 0.0
         pka_n = pka_values.get('N_term', 8.0)
         ch += 1.0 / (1.0 + 10 ** (pH - pka_n))

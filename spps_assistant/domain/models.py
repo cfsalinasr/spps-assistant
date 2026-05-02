@@ -27,6 +27,7 @@ class Vessel:
 
     @property
     def length(self) -> int:
+        """Return the number of residue tokens in the peptide sequence."""
         return len(self.original_tokens)
 
 

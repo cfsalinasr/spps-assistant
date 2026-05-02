@@ -40,7 +40,7 @@ class SolubilityResult:
     recommendation: str
     light_sensitive: bool
     net_charge_ph7: Optional[float] = None
-    pI: Optional[float] = None
+    p_i: Optional[float] = None
     gravy: Optional[float] = None
     orthogonal_groups: List[str] = field(default_factory=list)
 

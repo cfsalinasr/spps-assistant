@@ -55,7 +55,7 @@ def determine_resin_mass(
     vessel: Vessel,
     config: SynthesisConfig,
     residue_info_map: Dict,
-    all_yields: Optional[List[float]] = None,
+    _all_yields: Optional[List[float]] = None,
 ) -> float:
     """Determine resin mass for a vessel based on config strategy.
 

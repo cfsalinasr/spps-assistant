@@ -22,6 +22,13 @@ from spps_assistant.domain.stoichiometry import (
 )
 
 # ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+WASH_DURATION = '2 × 1 min'
+COUPLING_DURATION = '30 min'
+
+# ---------------------------------------------------------------------------
 # Styles
 # ---------------------------------------------------------------------------
 
@@ -131,7 +138,7 @@ def _build_coupling_label(config: SynthesisConfig, token: str) -> str:
 
 def _header_paragraph(
     synthesis_name: str,
-    date_str: str,
+    _date_str: str,
     cycle_num: Optional[int],
     total_cycles: Optional[int],
 ) -> List:
@@ -153,7 +160,7 @@ def _header_paragraph(
 
 def _build_cover_elements(
     synthesis_name: str,
-    date_str: str,
+    _date_str: str,
     vessels: List[Vessel],
     yield_results: List[YieldResult],
 ) -> List:
@@ -292,11 +299,11 @@ def _build_deprotection_table(config: SynthesisConfig) -> Table:
 
     if config.include_bb_test:
         rows.append(['[ ]', '3. Bromophenol Blue test', 'Bromophenol Blue in DMF (1×)', '1 × 2 min'])
-        rows.append(['[ ]', '4. DMF wash', 'DMF (2×)', '2 × 1 min'])
-        rows.append(['[ ]', '5. DCM wash', 'DCM (2×)', '2 × 1 min'])
+        rows.append(['[ ]', '4. DMF wash', 'DMF (2×)', WASH_DURATION])
+        rows.append(['[ ]', '5. DCM wash', 'DCM (2×)', WASH_DURATION])
     else:
-        rows.append(['[ ]', '3. DMF wash', 'DMF (2×)', '2 × 1 min'])
-        rows.append(['[ ]', '4. DCM wash', 'DCM (2×)', '2 × 1 min'])
+        rows.append(['[ ]', '3. DMF wash', 'DMF (2×)', WASH_DURATION])
+        rows.append(['[ ]', '4. DCM wash', 'DCM (2×)', WASH_DURATION])
 
     if config.include_kaiser_test:
         rows.append(['[ ]', 'Kaiser test', 'Coupling completeness check', 'As needed'])
@@ -314,10 +321,10 @@ def _build_coupling_table(config: SynthesisConfig, cycle: CouplingCycle) -> Tabl
     coupling_label = _build_coupling_label(config, first_token)
 
     rows = [['[ ]', 'Step', 'Details', 'Time']]
-    rows.append(['[ ]', '1st coupling', coupling_label, '30 min'])
-    rows.append(['[ ]', '2nd coupling', f'Repeat: {coupling_label}', '30 min'])
-    rows.append(['[ ]', '3rd coupling', f'Repeat: {coupling_label}', '30 min'])
-    rows.append(['[ ]', '4th coupling', f'Repeat: {coupling_label}', '30 min'])
+    rows.append(['[ ]', '1st coupling', coupling_label, COUPLING_DURATION])
+    rows.append(['[ ]', '2nd coupling', f'Repeat: {coupling_label}', COUPLING_DURATION])
+    rows.append(['[ ]', '3rd coupling', f'Repeat: {coupling_label}', COUPLING_DURATION])
+    rows.append(['[ ]', '4th coupling', f'Repeat: {coupling_label}', COUPLING_DURATION])
     rows.append(['', 'Post-coupling wash', 'DMF (2×1 min), DCM (3×1 min)', '5 min'])
 
     col_widths = [1.0 * cm, 3.0 * cm, 10.0 * cm, 2.5 * cm]
@@ -518,6 +525,58 @@ def _add_orthogonal_warning_pdf(elements: list, orthogonal_tokens: List[str]) ->
     elements.append(box_table)
 
 
+def _build_vessel_info_data(vessel: Vessel, yr: Optional[YieldResult],
+                             sol: Optional[SolubilityResult]) -> List:
+    """Build the info table data rows for a single vessel."""
+    info_data = [
+        ['Property', 'Value'],
+        ['Sequence (N→C)', ''.join(vessel.original_tokens)],
+        ['Synthesis order (C→N)', ''.join(vessel.reversed_tokens)],
+        ['Length', str(vessel.length)],
+        ['Peptide MW (Da)', f"{yr.peptide_mw:.2f}" if yr else '—'],
+        ['Theoretical Yield (mg)', f"{yr.theoretical_yield_mg:.2f}" if yr else '—'],
+        ['Resin mass (g)', f"{vessel.resin_mass_g:.4f}"],
+        ['Resin substitution (mmol/g)', f"{vessel.substitution_mmol_g:.4f}"],
+        ['Yield formula', yr.formula_shown if yr else '—'],
+    ]
+    if sol:
+        info_data += _build_sol_rows(sol)
+    return info_data
+
+
+def _build_sol_rows(sol: SolubilityResult) -> List:
+    """Build solubility property rows for the info table."""
+    return [
+        ['GRAVY score', f"{sol.gravy:.3f}" if sol.gravy is not None else '—'],
+        ['Net charge (pH 7)', f"{sol.net_charge_ph7:.2f}" if sol.net_charge_ph7 is not None else '—'],
+        ['pI', f"{sol.p_i:.2f}" if sol.p_i is not None else '—'],
+        ['Hydrophobicity (KD avg)', f"{sol.kd_avg:.3f}"],
+        ['Hydrophobicity (Eisenberg)', f"{sol.eisenberg_avg:.3f}"],
+        ['Hydrophobicity (Black & Mould)', f"{sol.black_mould_avg:.3f}"],
+        ['Classification', 'Hydrophobic' if sol.is_hydrophobic else 'Hydrophilic'],
+        ['Light sensitive', 'Yes (protect from light)' if sol.light_sensitive else 'No'],
+        ['Solubilization', sol.recommendation],
+    ]
+
+
+def _build_info_table(info_data: List) -> Table:
+    """Build the styled info table for a vessel."""
+    info_table = Table(info_data, colWidths=[6 * cm, 11.5 * cm])
+    info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2C3E50')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.HexColor('#F8F9FA'), colors.white]),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+    ]))
+    return info_table
+
+
 def generate_peptide_info_pdf(
     path: Path,
     synthesis_name: str,
@@ -559,49 +618,8 @@ def generate_peptide_info_pdf(
             SECTION_STYLE,
         ))
 
-        seq_str = ''.join(vessel.original_tokens)
-        rev_str = ''.join(vessel.reversed_tokens)
-
-        info_data = [
-            ['Property', 'Value'],
-            ['Sequence (N→C)', seq_str],
-            ['Synthesis order (C→N)', rev_str],
-            ['Length', str(vessel.length)],
-            ['Peptide MW (Da)', f"{yr.peptide_mw:.2f}" if yr else '—'],
-            ['Theoretical Yield (mg)', f"{yr.theoretical_yield_mg:.2f}" if yr else '—'],
-            ['Resin mass (g)', f"{vessel.resin_mass_g:.4f}"],
-            ['Resin substitution (mmol/g)', f"{vessel.substitution_mmol_g:.4f}"],
-            ['Yield formula', yr.formula_shown if yr else '—'],
-        ]
-
-        if sol:
-            info_data += [
-                ['GRAVY score', f"{sol.gravy:.3f}" if sol.gravy is not None else '—'],
-                ['Net charge (pH 7)', f"{sol.net_charge_ph7:.2f}" if sol.net_charge_ph7 is not None else '—'],
-                ['pI', f"{sol.pI:.2f}" if sol.pI is not None else '—'],
-                ['Hydrophobicity (KD avg)', f"{sol.kd_avg:.3f}"],
-                ['Hydrophobicity (Eisenberg)', f"{sol.eisenberg_avg:.3f}"],
-                ['Hydrophobicity (Black & Mould)', f"{sol.black_mould_avg:.3f}"],
-                ['Classification', 'Hydrophobic' if sol.is_hydrophobic else 'Hydrophilic'],
-                ['Light sensitive', 'Yes (protect from light)' if sol.light_sensitive else 'No'],
-                ['Solubilization', sol.recommendation],
-            ]
-
-        info_table = Table(info_data, colWidths=[6 * cm, 11.5 * cm])
-        info_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2C3E50')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.HexColor('#F8F9FA'), colors.white]),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ]))
-
-        elements.append(info_table)
+        info_data = _build_vessel_info_data(vessel, yr, sol)
+        elements.append(_build_info_table(info_data))
 
         if sol and sol.orthogonal_groups:
             elements.append(Spacer(1, 2 * mm))

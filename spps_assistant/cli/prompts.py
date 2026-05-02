@@ -261,12 +261,12 @@ def prompt_resin_params(vessels: List[Vessel], config: SynthesisConfig) -> List[
     for vessel in vessels:
         console.print(f"\n  [bold]Vessel {vessel.number}: {vessel.name}[/bold]")
         vessel.resin_mass_g = click.prompt(
-            f"    Resin mass (g)",
+            "    Resin mass (g)",
             default=config.fixed_resin_mass_g,
             type=float,
         )
         vessel.substitution_mmol_g = click.prompt(
-            f"    Substitution (mmol/g)",
+            "    Substitution (mmol/g)",
             default=0.3,
             type=float,
         )

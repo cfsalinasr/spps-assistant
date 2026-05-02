@@ -35,6 +35,57 @@ def _alt_fill() -> PatternFill:
     return PatternFill(fill_type='solid', fgColor=COLOR_ALT_ROW)
 
 
+def _apply_cell_number_format(cell, col_idx: int, is_liquid: bool) -> None:
+    """Apply number format for numeric columns in the materials XLSX."""
+    if col_idx == 3:
+        cell.number_format = '0.0'
+    elif col_idx == 4:
+        cell.number_format = '0.0000'
+    elif col_idx == 5 and not is_liquid:
+        cell.number_format = '0.00'
+    elif col_idx == 6:
+        cell.number_format = '0.00'
+    elif col_idx == 7:
+        cell.number_format = '0.0 "µL"' if is_liquid else '0.000'
+
+
+def _write_mat_row(ws, row_offset: int, mat: MaterialsRow) -> None:
+    """Write a single materials row to the worksheet."""
+    row_num = row_offset + 3
+    is_alt = row_offset % 2 == 1
+    is_liquid = mat.volume_ul is not None
+
+    if is_liquid:
+        mass_cell_value = None
+        volume_cell_value = mat.volume_ul
+    else:
+        mass_cell_value = mat.mass_mg
+        volume_cell_value = mat.volume_ml
+
+    row_data = [
+        mat.token, mat.protection, mat.fmoc_mw, mat.mmol_needed,
+        mass_cell_value, mat.stock_conc, volume_cell_value,
+        mat.formula, mat.notes,
+    ]
+
+    for col_idx, value in enumerate(row_data, start=1):
+        cell = ws.cell(row=row_num, column=col_idx, value=value)
+        cell.font = Font(name='Calibri', size=12)
+        cell.border = _thin_border()
+        cell.alignment = Alignment(
+            horizontal='center' if col_idx <= 7 else 'left',
+            vertical='center',
+            wrap_text=(col_idx >= 8),
+        )
+        if is_liquid:
+            cell.fill = PatternFill(fill_type='solid', fgColor='FEF9E7')
+        elif is_alt:
+            cell.fill = _alt_fill()
+        _apply_cell_number_format(cell, col_idx, is_liquid)
+
+    ws.row_dimensions[row_num].height = 22
+
+
 def generate_materials_xlsx(
     path: Path,
     synthesis_name: str,
@@ -96,58 +147,7 @@ def generate_materials_xlsx(
     # Data rows                                                            #
     # ------------------------------------------------------------------ #
     for row_offset, mat in enumerate(materials_rows):
-        row_num = row_offset + 3
-        is_alt = row_offset % 2 == 1
-        is_liquid = mat.volume_ul is not None
-
-        # Liquid: store raw numeric so Excel can sort/filter; format applied below.
-        if is_liquid:
-            mass_cell_value = None
-            volume_cell_value = mat.volume_ul
-        else:
-            mass_cell_value = mat.mass_mg
-            volume_cell_value = mat.volume_ml
-
-        row_data = [
-            mat.token,
-            mat.protection,
-            mat.fmoc_mw,
-            mat.mmol_needed,
-            mass_cell_value,
-            mat.stock_conc,
-            volume_cell_value,
-            mat.formula,
-            mat.notes,
-        ]
-
-        for col_idx, value in enumerate(row_data, start=1):
-            cell = ws.cell(row=row_num, column=col_idx, value=value)
-            cell.font = Font(name='Calibri', size=12)
-            cell.border = _thin_border()
-            cell.alignment = Alignment(
-                horizontal='center' if col_idx <= 7 else 'left',
-                vertical='center',
-                wrap_text=(col_idx >= 8),
-            )
-            # Liquid rows always get yellow tint so lab staff spot them instantly.
-            if is_liquid:
-                cell.fill = PatternFill(fill_type='solid', fgColor='FEF9E7')
-            elif is_alt:
-                cell.fill = _alt_fill()
-
-            # Number formatting for numeric columns
-            if col_idx == 3:   # Fmoc-MW
-                cell.number_format = '0.0'
-            elif col_idx == 4: # mmol needed
-                cell.number_format = '0.0000'
-            elif col_idx == 5 and not is_liquid:  # Mass mg (solid only)
-                cell.number_format = '0.00'
-            elif col_idx == 6: # Stock conc
-                cell.number_format = '0.00'
-            elif col_idx == 7:  # Volume: µL for liquids, mL for solids
-                cell.number_format = '0.0 "µL"' if is_liquid else '0.000'
-
-        ws.row_dimensions[row_num].height = 22
+        _write_mat_row(ws, row_offset, mat)
 
     # ------------------------------------------------------------------ #
     # Freeze panes below header                                            #

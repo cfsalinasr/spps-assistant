@@ -1,7 +1,50 @@
 """FASTA and plain-text sequence file parsers."""
 
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
+
+
+def _read_lines(path: Path) -> List[str]:
+    """Read a file and return its non-stripped lines."""
+    text = path.read_text(encoding='utf-8')
+    return text.splitlines()
+
+
+def _save_fasta_entry(current_name: str, current_seq_parts: List[str],
+                      results: List[Tuple[str, str]]) -> None:
+    """Append a completed FASTA entry to results if non-empty."""
+    if current_name:
+        seq = ''.join(current_seq_parts)
+        if seq:
+            results.append((current_name, seq))
+
+
+def _parse_fasta_header(line: str, n_previous: int) -> str:
+    """Extract the sequence name from a FASTA header line."""
+    header = line[1:].strip()
+    parts = header.split(None, 1)
+    return parts[0] if parts else f"Seq{n_previous + 1}"
+
+
+def _parse_fasta_lines(lines: List[str]) -> List[Tuple[str, str]]:
+    """Parse lines of a FASTA file into (name, sequence) tuples."""
+    results: List[Tuple[str, str]] = []
+    current_name: str = ''
+    current_seq_parts: List[str] = []
+
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith(';'):
+            continue
+        if line.startswith('>'):
+            _save_fasta_entry(current_name, current_seq_parts, results)
+            current_name = _parse_fasta_header(line, len(results))
+            current_seq_parts = []
+        else:
+            current_seq_parts.append(line)
+
+    _save_fasta_entry(current_name, current_seq_parts, results)
+    return results
 
 
 def parse_fasta(path: Path) -> List[Tuple[str, str]]:
@@ -26,44 +69,13 @@ def parse_fasta(path: Path) -> List[Tuple[str, str]]:
     if not path.exists():
         raise FileNotFoundError(f"Sequence file not found: {path}")
 
-    text = path.read_text(encoding='utf-8')
-    lines = text.splitlines()
+    lines = _read_lines(path)
 
-    # Check if this looks like FASTA
     has_header = any(line.startswith('>') for line in lines)
     if not has_header:
         return parse_plain_text(path)
 
-    results = []
-    current_name: str = ''
-    current_seq_parts: List[str] = []
-
-    for line_num, line in enumerate(lines, start=1):
-        line = line.strip()
-        if not line or line.startswith(';'):
-            # Skip blank lines and FASTA comments
-            continue
-        if line.startswith('>'):
-            # Save previous entry
-            if current_name:
-                seq = ''.join(current_seq_parts)
-                if seq:
-                    results.append((current_name, seq))
-            # Parse header — take everything after '>' as the name, strip whitespace
-            header = line[1:].strip()
-            # Use only up to first whitespace as name (standard FASTA behavior)
-            parts = header.split(None, 1)
-            current_name = parts[0] if parts else f"Seq{len(results)+1}"
-            current_seq_parts = []
-        else:
-            # Sequence line — accumulate (preserves bracket notation)
-            current_seq_parts.append(line)
-
-    # Save last entry
-    if current_name:
-        seq = ''.join(current_seq_parts)
-        if seq:
-            results.append((current_name, seq))
+    results = _parse_fasta_lines(lines)
 
     if not results:
         raise ValueError(f"No valid sequences found in FASTA file: {path}")
@@ -92,11 +104,10 @@ def parse_plain_text(path: Path) -> List[Tuple[str, str]]:
     if not path.exists():
         raise FileNotFoundError(f"Sequence file not found: {path}")
 
-    text = path.read_text(encoding='utf-8')
-    lines = text.splitlines()
+    lines = _read_lines(path)
 
     results = []
-    for line_num, line in enumerate(lines, start=1):
+    for line in lines:
         line = line.strip()
         if not line or line.startswith('#'):
             continue

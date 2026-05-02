@@ -8,7 +8,7 @@ from spps_assistant.domain.solubility import (
     check_light_sensitivity,
     get_solubilization_recommendation,
     calc_net_charge_ph7,
-    calc_pI,
+    calc_pi as calc_pI,
     calc_gravy,
     analyze_peptide,
 )
@@ -226,5 +226,5 @@ def test_analyze_peptide_returns_result():
     assert isinstance(result, SolubilityResult)
     assert result.light_sensitive is True  # W present
     assert isinstance(result.kd_avg, float)
-    assert isinstance(result.pI, float)
+    assert isinstance(result.p_i, float)
     assert isinstance(result.net_charge_ph7, float)

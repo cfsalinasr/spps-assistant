@@ -153,14 +153,16 @@ do_generate() {
     echo -e "  ${GREEN}Selected:${RESET} $input_path"
     echo ""
     echo -e "  ${BOLD}Step 2 of 3 — Reactants file (optional)${RESET}"
-    echo -n "  Do you have a reactants file with MW values? [y/N]: "
+    echo -n "  Do you have a reactants file with MW values? [y/N, 0 = back]: "
     read -r has_mat
+    if [ "$has_mat" = "0" ]; then return; fi
     local cmd=(spps-assistant generate --input "$input_path")
     if [[ "$has_mat" =~ ^[Yy] ]]; then
         echo ""
         echo -e "  ${DIM}A Finder window will open. Select your reactants file (.xlsx or .csv).${RESET}"
-        echo -n "  Press Enter to open the file picker: "
-        read -r
+        echo -n "  Press Enter to open the file picker, or 0 to skip: "
+        read -r _nav2
+        if [ "$_nav2" = "0" ]; then return; fi
         local mat_path
         mat_path=$(choose_file_dialog "Select your reactants file (.xlsx or .csv)")
         mat_path="${mat_path%$'\n'}"
@@ -230,14 +232,16 @@ do_materials() {
     echo -e "  ${GREEN}Selected:${RESET} $input_path"
     echo ""
     echo -e "  ${BOLD}Step 2 of 3 — Reactants file (optional)${RESET}"
-    echo -n "  Do you have a reactants file with MW values? [y/N]: "
+    echo -n "  Do you have a reactants file with MW values? [y/N, 0 = back]: "
     read -r has_mat
+    if [ "$has_mat" = "0" ]; then return; fi
     local cmd=(spps-assistant materials --input "$input_path")
     if [[ "$has_mat" =~ ^[Yy] ]]; then
         echo ""
         echo -e "  ${DIM}A Finder window will open. Select your reactants file (.xlsx or .csv).${RESET}"
-        echo -n "  Press Enter to open the file picker: "
-        read -r
+        echo -n "  Press Enter to open the file picker, or 0 to skip: "
+        read -r _nav2
+        if [ "$_nav2" = "0" ]; then return; fi
         local mat_path
         mat_path=$(choose_file_dialog "Select your reactants file (.xlsx or .csv)")
         mat_path="${mat_path%$'\n'}"

@@ -179,10 +179,13 @@ def prompt_synthesis_config(config_defaults: Optional[Dict] = None) -> Synthesis
 
     aa_eq = click.prompt(
         "  Reactant excess (applied to all reagents; DIEA and Pyridine scale via\n"
-        "  the Equivalents column in your materials file — DIEA ×2, Pyridine ×20)",
+        "  the Equivalents column in your materials file — DIEA x2, Pyridine x20)",
         default=float(d.get('aa_equivalents', 10.0)),
         type=float,
     )
+    if aa_eq <= 0:
+        click.echo("  Error: Reactant excess must be > 0.", err=True)
+        raise SystemExit(1)
     act_eq = aa_eq   # activator equivalents now derived from per-reagent multiplier
     base_eq = aa_eq  # base equivalents now derived from per-reagent multiplier
 

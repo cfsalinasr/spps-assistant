@@ -166,9 +166,9 @@ class TestParseMaterialsCSV:
             'Pyridine,,79.1,79.1,0.978,20,Catalyst\n'
         )
         rows = parse_materials_csv(f)
-        assert rows[0]['equivalents_multiplier'] == pytest.approx(1.0)
-        assert rows[1]['equivalents_multiplier'] == pytest.approx(2.0)
-        assert rows[2]['equivalents_multiplier'] == pytest.approx(20.0)
+        assert rows[0]['equivalents_multiplier'] == pytest.approx(1.0, abs=1e-6)
+        assert rows[1]['equivalents_multiplier'] == pytest.approx(2.0, abs=1e-6)
+        assert rows[2]['equivalents_multiplier'] == pytest.approx(20.0, abs=1e-6)
 
     def test_equivalents_multiplier_defaults_to_one_when_missing(self, tmp_path):
         """Missing Equivalents column defaults multiplier to 1.0."""
@@ -178,7 +178,7 @@ class TestParseMaterialsCSV:
             'A,,311.3,71.08,,Fmoc-Ala-OH\n'
         )
         rows = parse_materials_csv(f)
-        assert rows[0]['equivalents_multiplier'] == pytest.approx(1.0)
+        assert rows[0]['equivalents_multiplier'] == pytest.approx(1.0, abs=1e-6)
 
 
 # ── parse_materials_xlsx ──────────────────────────────────────────────────────
@@ -251,9 +251,9 @@ class TestParseMaterialsXLSX:
         p = tmp_path / 'eq.xlsx'
         wb.save(str(p))
         rows = parse_materials_xlsx(p)
-        assert rows[0]['equivalents_multiplier'] == pytest.approx(1.0)
-        assert rows[1]['equivalents_multiplier'] == pytest.approx(2.0)
-        assert rows[2]['equivalents_multiplier'] == pytest.approx(20.0)
+        assert rows[0]['equivalents_multiplier'] == pytest.approx(1.0, abs=1e-6)
+        assert rows[1]['equivalents_multiplier'] == pytest.approx(2.0, abs=1e-6)
+        assert rows[2]['equivalents_multiplier'] == pytest.approx(20.0, abs=1e-6)
 
     def test_equivalents_multiplier_defaults_to_one_when_missing_xlsx(self, tmp_path):
         """Missing Equivalents column in XLSX defaults multiplier to 1.0."""
@@ -265,7 +265,7 @@ class TestParseMaterialsXLSX:
         p = tmp_path / 'no_eq.xlsx'
         wb.save(str(p))
         rows = parse_materials_xlsx(p)
-        assert rows[0]['equivalents_multiplier'] == pytest.approx(1.0)
+        assert rows[0]['equivalents_multiplier'] == pytest.approx(1.0, abs=1e-6)
 
 
 # ── load_materials_file ───────────────────────────────────────────────────────

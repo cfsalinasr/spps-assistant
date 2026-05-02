@@ -17,7 +17,7 @@ if ! command -v spps-assistant &>/dev/null; then
     echo -e "${RED}${BOLD}Error:${RESET} 'spps-assistant' command not found."
     echo ""
     echo "Please run the following once to install it:"
-    echo "  python3.11 -m pip install spps-assistant"
+    echo "  python3 -m pip install spps-assistant"
     echo ""
     read -r -p "Press Enter to exit..."
     exit 1
@@ -162,15 +162,18 @@ do_generate() {
         echo -e "  ${DIM}A Finder window will open. Select your reactants file (.xlsx or .csv).${RESET}"
         echo -n "  Press Enter to open the file picker, or 0 to skip: "
         read -r _nav2
-        if [ "$_nav2" = "0" ]; then return; fi
-        local mat_path
-        mat_path=$(choose_file_dialog "Select your reactants file (.xlsx or .csv)")
-        mat_path="${mat_path%$'\n'}"
-        if [ -f "$mat_path" ]; then
-            echo -e "  ${GREEN}Selected:${RESET} $mat_path"
-            cmd+=(--materials "$mat_path")
+        if [ "$_nav2" != "0" ]; then
+            local mat_path
+            mat_path=$(choose_file_dialog "Select your reactants file (.xlsx or .csv)")
+            mat_path="${mat_path%$'\n'}"
+            if [ -f "$mat_path" ]; then
+                echo -e "  ${GREEN}Selected:${RESET} $mat_path"
+                cmd+=(--materials "$mat_path")
+            else
+                echo -e "  ${YELLOW}No reactants file selected — continuing without it.${RESET}"
+            fi
         else
-            echo -e "  ${YELLOW}No reactants file selected — continuing without it.${RESET}"
+            echo -e "  ${YELLOW}Skipping reactants file — continuing without it.${RESET}"
         fi
     fi
 
@@ -241,15 +244,18 @@ do_materials() {
         echo -e "  ${DIM}A Finder window will open. Select your reactants file (.xlsx or .csv).${RESET}"
         echo -n "  Press Enter to open the file picker, or 0 to skip: "
         read -r _nav2
-        if [ "$_nav2" = "0" ]; then return; fi
-        local mat_path
-        mat_path=$(choose_file_dialog "Select your reactants file (.xlsx or .csv)")
-        mat_path="${mat_path%$'\n'}"
-        if [ -f "$mat_path" ]; then
-            echo -e "  ${GREEN}Selected:${RESET} $mat_path"
-            cmd+=(--materials "$mat_path")
+        if [ "$_nav2" != "0" ]; then
+            local mat_path
+            mat_path=$(choose_file_dialog "Select your reactants file (.xlsx or .csv)")
+            mat_path="${mat_path%$'\n'}"
+            if [ -f "$mat_path" ]; then
+                echo -e "  ${GREEN}Selected:${RESET} $mat_path"
+                cmd+=(--materials "$mat_path")
+            else
+                echo -e "  ${YELLOW}No reactants file selected — continuing without it.${RESET}"
+            fi
         else
-            echo -e "  ${YELLOW}No reactants file selected — continuing without it.${RESET}"
+            echo -e "  ${YELLOW}Skipping reactants file — continuing without it.${RESET}"
         fi
     fi
 

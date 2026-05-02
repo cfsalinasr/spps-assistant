@@ -92,6 +92,21 @@ def calc_mass_mg(mmol: float, fmoc_mw: float) -> float:
     return mmol * fmoc_mw
 
 
+def derive_equivalents(aa_eq: float) -> tuple:
+    """Derive activator and base equivalents from the global reactant excess.
+
+    Per-reagent multipliers in the materials file scale individual reagents;
+    the returned values are the common base equivalents for SynthesisConfig.
+
+    Args:
+        aa_eq: Global reactant excess (must be > 0)
+
+    Returns:
+        Tuple of (activator_equivalents, base_equivalents), both equal to aa_eq
+    """
+    return aa_eq, aa_eq
+
+
 def format_volume_formula(
     n_vessels: int,
     equivalents: float,

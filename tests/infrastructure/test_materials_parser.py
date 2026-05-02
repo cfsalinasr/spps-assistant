@@ -184,7 +184,7 @@ class TestParseMaterialsCSV:
 # ── parse_materials_xlsx ──────────────────────────────────────────────────────
 
 class TestParseMaterialsXLSX:
-    def _make_xlsx(self, tmp_path, rows):
+    def _make_xlsx(self, tmp_path: Path, rows: list) -> Path:
         """Write a minimal XLSX materials file and return its path."""
         wb = openpyxl.Workbook()
         ws = wb.active

@@ -7,6 +7,7 @@ from rich.console import Console
 from rich.table import Table as RichTable
 from rich.panel import Panel
 
+from spps_assistant.domain.stoichiometry import derive_equivalents
 from spps_assistant.domain.models import (
     ResidueInfo, SynthesisConfig, Vessel, YieldResult, SolubilityResult
 )
@@ -186,8 +187,7 @@ def prompt_synthesis_config(config_defaults: Optional[Dict] = None) -> Synthesis
     if aa_eq <= 0:
         click.echo("  Error: Reactant excess must be > 0.", err=True)
         raise SystemExit(1)
-    act_eq = aa_eq   # activator equivalents now derived from per-reagent multiplier
-    base_eq = aa_eq  # base equivalents now derived from per-reagent multiplier
+    act_eq, base_eq = derive_equivalents(aa_eq)
 
     include_bb = click.confirm(
         "  Include Bromophenol Blue test?",

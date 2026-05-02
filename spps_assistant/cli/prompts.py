@@ -179,8 +179,8 @@ def prompt_synthesis_config(config_defaults: Optional[Dict] = None) -> Synthesis
     )
 
     aa_eq = click.prompt(
-        "  Reactant excess (applied to all reagents; DIEA and Pyridine scale via\n"
-        "  the Equivalents column in your materials file — DIEA x2, Pyridine x20)",
+        "  Reactant excess (applied to all reagents; per-reagent multipliers\n"
+        "  from the Equivalents column in your materials file are applied automatically)",
         default=float(d.get('aa_equivalents', 10.0)),
         type=float,
     )
@@ -330,8 +330,7 @@ def display_run_summary(
         f"[bold]Mode:[/bold] {config.volume_mode}  "
         f"[bold]Oxyma:[/bold] {'Yes' if config.use_oxyma else 'No'}\n"
         f"[bold]Reactant excess:[/bold] {config.aa_equivalents}x  "
-        f"(DIEA x2 = {config.aa_equivalents * 2:.0f} eq, "
-        f"Pyridine x20 = {config.aa_equivalents * 20:.0f} eq)  "
+        f"(per-reagent multipliers from Equivalents column applied automatically)  "
         f"[bold]Deprotection:[/bold] {config.deprotection_reagent}"
     )
     console.print(Panel(cfg_text, title="Synthesis Configuration", border_style="blue"))

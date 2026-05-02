@@ -19,35 +19,35 @@ from spps_assistant.infrastructure.materials_parser import (
 class TestParseFloat:
     def test_dot_decimal(self):
         """Dot decimal separator is parsed correctly."""
-        assert _parse_float('311.3', 0.0) == pytest.approx(311.3)
+        assert _parse_float('311.3', 0.0) == pytest.approx(311.3, rel=1e-6)
 
     def test_comma_decimal(self):
         """Comma decimal separator is normalised to dot."""
-        assert _parse_float('311,3', 0.0) == pytest.approx(311.3)
+        assert _parse_float('311,3', 0.0) == pytest.approx(311.3, rel=1e-6)
 
     def test_empty_string_returns_default(self):
         """Empty string returns the default value."""
-        assert _parse_float('', 99.0) == pytest.approx(99.0)
+        assert _parse_float('', 99.0) == pytest.approx(99.0, rel=1e-6)
 
     def test_none_returns_default(self):
         """None input returns the default value."""
-        assert _parse_float(None, 5.0) == pytest.approx(5.0)
+        assert _parse_float(None, 5.0) == pytest.approx(5.0, rel=1e-6)
 
     def test_invalid_string_returns_default(self):
         """Non-numeric string returns the default value."""
-        assert _parse_float('abc', 1.0) == pytest.approx(1.0)
+        assert _parse_float('abc', 1.0) == pytest.approx(1.0, rel=1e-6)
 
     def test_integer_string(self):
         """Integer string is parsed as a float."""
-        assert _parse_float('42', 0.0) == pytest.approx(42.0)
+        assert _parse_float('42', 0.0) == pytest.approx(42.0, rel=1e-6)
 
     def test_zero(self):
         """String '0' parses to 0.0, not the default."""
-        assert _parse_float('0', 99.0) == pytest.approx(0.0)
+        assert _parse_float('0', 99.0) == pytest.approx(0.0, abs=1e-9)
 
     def test_native_float_passthrough(self):
         """Native float is returned unchanged."""
-        assert _parse_float(379.3, 0.0) == pytest.approx(379.3)
+        assert _parse_float(379.3, 0.0) == pytest.approx(379.3, rel=1e-6)
 
 
 # ── parse_materials_csv ───────────────────────────────────────────────────────

@@ -17,7 +17,7 @@ if ! command -v spps-assistant &>/dev/null; then
     echo -e "${RED}${BOLD}Error:${RESET} 'spps-assistant' command not found."
     echo ""
     echo "Please run the following once to install it:"
-    echo "  python3.11 -m pip install -e \"/Users/cristiansalinas/Desktop/spps/spps-assistant[dev]\""
+    echo "  python3.11 -m pip install spps-assistant"
     echo ""
     read -r -p "Press Enter to exit..."
     exit 1
@@ -54,16 +54,23 @@ choose_file_dialog() {
     osascript -e "POSIX path of (choose file with prompt \"$prompt\")" 2>/dev/null || true
 }
 
+# Open a native macOS save-as dialog and return the chosen destination path.
+choose_save_dialog() {
+    local prompt="${1:-Save file as:}"
+    osascript -e "POSIX path of (choose file name with prompt \"$prompt\")" 2>/dev/null || true
+}
+
 ask_output_dir() {
     local default="$HOME/Desktop/spps_output"
     echo "" >/dev/tty
-    echo -n "  Output directory  [Enter = $default]: " >/dev/tty
+    echo -n "  Output directory  [Enter = $default, 0 = back]: " >/dev/tty
     local dir
     read -r dir
     dir="${dir#"${dir%%[! ]*}"}"
     dir="${dir%"${dir##*[! ]}"}"
     dir="${dir//\\ / }"
     if [[ "$dir" == \'*\' ]]; then dir="${dir:1:${#dir}-2}"; fi
+    if [ "$dir" = "0" ]; then printf '0'; return; fi
     if [ -z "$dir" ]; then dir="$default"; fi
     printf '%s' "$dir"
 }
@@ -148,7 +155,7 @@ do_generate() {
     echo -e "  ${BOLD}Step 2 of 3 — Reactants file (optional)${RESET}"
     echo -n "  Do you have a reactants file with MW values? [y/N]: "
     read -r has_mat
-    local mat_flag=""
+    local cmd=(spps-assistant generate --input "$input_path")
     if [[ "$has_mat" =~ ^[Yy] ]]; then
         echo ""
         echo -e "  ${DIM}A Finder window will open. Select your reactants file (.xlsx or .csv).${RESET}"
@@ -159,7 +166,7 @@ do_generate() {
         mat_path="${mat_path%$'\n'}"
         if [ -f "$mat_path" ]; then
             echo -e "  ${GREEN}Selected:${RESET} $mat_path"
-            mat_flag="--materials \"$mat_path\""
+            cmd+=(--materials "$mat_path")
         else
             echo -e "  ${YELLOW}No reactants file selected — continuing without it.${RESET}"
         fi
@@ -169,14 +176,13 @@ do_generate() {
     echo -e "  ${BOLD}Step 3 of 3 — Output directory${RESET}"
     local out_dir
     out_dir=$(ask_output_dir)
+    if [ "$out_dir" = "0" ]; then return; fi
+    cmd+=(--output "$out_dir")
 
     echo ""
     echo -e "  ${GREEN}Running…${RESET}"
     echo ""
-    eval spps-assistant generate \
-        --input "\"$input_path\"" \
-        $mat_flag \
-        --output "\"$out_dir\""
+    "${cmd[@]}"
     local rc=$?
     echo ""
     if [ $rc -eq 0 ]; then
@@ -226,7 +232,7 @@ do_materials() {
     echo -e "  ${BOLD}Step 2 of 3 — Reactants file (optional)${RESET}"
     echo -n "  Do you have a reactants file with MW values? [y/N]: "
     read -r has_mat
-    local mat_flag=""
+    local cmd=(spps-assistant materials --input "$input_path")
     if [[ "$has_mat" =~ ^[Yy] ]]; then
         echo ""
         echo -e "  ${DIM}A Finder window will open. Select your reactants file (.xlsx or .csv).${RESET}"
@@ -237,7 +243,7 @@ do_materials() {
         mat_path="${mat_path%$'\n'}"
         if [ -f "$mat_path" ]; then
             echo -e "  ${GREEN}Selected:${RESET} $mat_path"
-            mat_flag="--materials \"$mat_path\""
+            cmd+=(--materials "$mat_path")
         else
             echo -e "  ${YELLOW}No reactants file selected — continuing without it.${RESET}"
         fi
@@ -247,14 +253,13 @@ do_materials() {
     echo -e "  ${BOLD}Step 3 of 3 — Output directory${RESET}"
     local out_dir
     out_dir=$(ask_output_dir)
+    if [ "$out_dir" = "0" ]; then return; fi
+    cmd+=(--output "$out_dir")
 
     echo ""
     echo -e "  ${GREEN}Running…${RESET}"
     echo ""
-    eval spps-assistant materials \
-        --input "\"$input_path\"" \
-        $mat_flag \
-        --output "\"$out_dir\""
+    "${cmd[@]}"
     local rc=$?
     echo ""
     if [ $rc -eq 0 ]; then
@@ -302,9 +307,9 @@ do_database() {
                 ;;
             3)
                 echo ""
-                echo -e "  ${DIM}A Finder window will open — choose where to save the CSV.${RESET}"
+                echo -e "  ${DIM}A Save dialog will open — choose the destination CSV file.${RESET}"
                 local ep
-                ep=$(choose_file_dialog "Save CSV to...")
+                ep=$(choose_save_dialog "Save export CSV as...")
                 ep="${ep%$'\n'}"
                 if [ -n "$ep" ]; then
                     spps-assistant db --export "$ep"

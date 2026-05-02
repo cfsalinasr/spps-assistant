@@ -239,6 +239,34 @@ class TestParseMaterialsXLSX:
         with pytest.raises(FileNotFoundError):
             parse_materials_xlsx(Path('/nonexistent/file.xlsx'))
 
+    def test_equivalents_multiplier_from_xlsx(self, tmp_path):
+        """Equivalents column in XLSX is parsed into equivalents_multiplier."""
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(['ResidueCode', 'ProtectionGroup', 'FmocMW_g_mol',
+                   'FreeAA_MW_g_mol', 'Density_g_mL', 'Equivalents', 'Notes'])
+        ws.append(['A', '', 311.3, 71.08, None, 1, 'Fmoc-Ala-OH'])
+        ws.append(['DIEA', '', 129.24, 129.24, 0.742, 2, 'Base'])
+        ws.append(['Pyridine', '', 79.1, 79.1, 0.978, 20, 'Catalyst'])
+        p = tmp_path / 'eq.xlsx'
+        wb.save(str(p))
+        rows = parse_materials_xlsx(p)
+        assert rows[0]['equivalents_multiplier'] == pytest.approx(1.0)
+        assert rows[1]['equivalents_multiplier'] == pytest.approx(2.0)
+        assert rows[2]['equivalents_multiplier'] == pytest.approx(20.0)
+
+    def test_equivalents_multiplier_defaults_to_one_when_missing_xlsx(self, tmp_path):
+        """Missing Equivalents column in XLSX defaults multiplier to 1.0."""
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(['ResidueCode', 'ProtectionGroup', 'FmocMW_g_mol',
+                   'FreeAA_MW_g_mol', 'Density_g_mL', 'Notes'])
+        ws.append(['A', '', 311.3, 71.08, None, 'Fmoc-Ala-OH'])
+        p = tmp_path / 'no_eq.xlsx'
+        wb.save(str(p))
+        rows = parse_materials_xlsx(p)
+        assert rows[0]['equivalents_multiplier'] == pytest.approx(1.0)
+
 
 # ── load_materials_file ───────────────────────────────────────────────────────
 

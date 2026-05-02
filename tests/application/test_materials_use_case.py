@@ -160,7 +160,7 @@ class TestBuildMaterialsRows:
         }
         rows = build_materials_rows([v], info, _config(aa_equivalents=10.0))
         # eff_eq=20, resin_mmol=0.03 → mmol = 20 * 0.03 = 0.60
-        assert rows[0].mmol_needed == pytest.approx(0.60)
+        assert rows[0].mmol_needed == pytest.approx(0.60, abs=1e-9)
 
     def test_liquid_reagent_sets_volume_ul(self):
         """Reagent with density produces a non-None volume_ul."""

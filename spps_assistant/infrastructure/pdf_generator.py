@@ -670,7 +670,7 @@ def generate_materials_pdf(
             row.notes,
         ])
 
-    col_widths = [2.0 * cm, 2.5 * cm, 2.5 * cm, 2.2 * cm, 2.5 * cm, 2.0 * cm, 2.5 * cm, 3.5 * cm]
+    col_widths = [1.8 * cm, 2.2 * cm, 2.5 * cm, 2.0 * cm, 2.2 * cm, 1.8 * cm, 2.2 * cm, 3.3 * cm]
     mat_table = Table(mat_data, colWidths=col_widths)
     mat_table.setStyle(TABLE_HEADER_STYLE)
     elements.append(mat_table)

@@ -326,9 +326,9 @@ def display_run_summary(
         f"[bold]Base:[/bold] {config.base}  "
         f"[bold]Mode:[/bold] {config.volume_mode}  "
         f"[bold]Oxyma:[/bold] {'Yes' if config.use_oxyma else 'No'}\n"
-        f"[bold]Reactant excess:[/bold] {config.aa_equivalents}×  "
-        f"(DIEA ×2 = {config.aa_equivalents * 2:.0f} eq, "
-        f"Pyridine ×20 = {config.aa_equivalents * 20:.0f} eq)  "
+        f"[bold]Reactant excess:[/bold] {config.aa_equivalents}x  "
+        f"(DIEA x2 = {config.aa_equivalents * 2:.0f} eq, "
+        f"Pyridine x20 = {config.aa_equivalents * 20:.0f} eq)  "
         f"[bold]Deprotection:[/bold] {config.deprotection_reagent}"
     )
     console.print(Panel(cfg_text, title="Synthesis Configuration", border_style="blue"))

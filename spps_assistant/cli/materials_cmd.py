@@ -64,11 +64,13 @@ def materials(
     # Load MW data
     residue_info_map = {}
     if materials_path:
+        console.print(f"\n[bold]Loading Fmoc-MW from materials file:[/bold] {materials_path}")
         try:
             residue_info_map = load_materials_map(Path(materials_path))
         except ValueError as e:
             console.print(f"[red]{e}[/red]")
             sys.exit(1)
+        console.print(f"  Loaded {len(residue_info_map)} residues from materials file.")
 
     unique_tokens = get_unique_tokens(vessels)
     if not non_interactive:
@@ -83,7 +85,6 @@ def materials(
         console.print(f"[red]{e}[/red]")
         sys.exit(1)
 
-    eff_output = output_dir or config_defaults.get('output_directory', 'spps_output')
     use_case = MaterialsUseCase(db=db)
 
     try:
@@ -91,7 +92,7 @@ def materials(
             vessels=vessels,
             residue_info_map=residue_info_map,
             config=config,
-            output_dir=eff_output,
+            output_dir=config.output_directory,
             week=week,
         )
     except Exception as e:

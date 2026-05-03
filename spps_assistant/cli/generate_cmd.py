@@ -1,6 +1,7 @@
 """spps-assistant generate — full synthesis guide generation workflow."""
 
 import sys
+import traceback
 from typing import Optional
 
 import click
@@ -100,7 +101,8 @@ def generate(
     # ------------------------------------------------------------------ #
     # Step c: Build vessels                                                #
     # ------------------------------------------------------------------ #
-    vessels = build_vessels(parsed_sequences, starting_num)
+    substitution_mmol_g = float(config_defaults.get('substitution_mmol_g', 0.3))
+    vessels = build_vessels(parsed_sequences, starting_num, substitution_mmol_g=substitution_mmol_g)
 
     # ------------------------------------------------------------------ #
     # Step d-e: Show reversal confirmation table                           #
@@ -152,7 +154,6 @@ def generate(
     # ------------------------------------------------------------------ #
     for vessel in vessels:
         vessel.resin_mass_g = config.fixed_resin_mass_g
-        vessel.substitution_mmol_g = 0.3  # will be prompted if interactive
 
     if not non_interactive:
         vessels = prompt_resin_params(vessels, config)
@@ -200,7 +201,6 @@ def generate(
         )
     except Exception as e:
         console.print(f"[red]Error generating files: {e}[/red]")
-        import traceback
         traceback.print_exc()
         sys.exit(1)
 

@@ -1,6 +1,7 @@
 """spps-assistant materials — weekly materials explosion use case."""
 
 import sys
+import traceback
 from typing import Optional
 
 import click
@@ -97,7 +98,6 @@ def materials(
         )
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
-        import traceback
         traceback.print_exc()
         sys.exit(1)
 

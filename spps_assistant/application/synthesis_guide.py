@@ -2,7 +2,7 @@
 
 from datetime import date
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
 from spps_assistant.application.ports import DatabaseRepository, ConfigRepository
 from spps_assistant.domain.models import (
@@ -81,6 +81,136 @@ def determine_resin_mass(
     )
 
 
+def build_config_from_defaults(
+    config_defaults: Dict,
+    volume_mode: Optional[str] = None,
+    output_dir: Optional[str] = None,
+    starting_num: Optional[int] = None,
+) -> SynthesisConfig:
+    """Build a SynthesisConfig from a defaults dict with optional overrides.
+
+    Args:
+        config_defaults: Dict of default values (e.g. from a config file)
+        volume_mode: Overrides config_defaults volume_mode when provided
+        output_dir: Overrides config_defaults output_directory when provided
+        starting_num: Overrides config_defaults starting_vessel_number when provided
+
+    Returns:
+        A fully-populated SynthesisConfig instance
+
+    Raises:
+        ValueError: If aa_equivalents <= 0
+    """
+    from spps_assistant.domain.stoichiometry import derive_equivalents
+
+    aa_eq = config_defaults.get('aa_equivalents', 3.0)
+    if aa_eq <= 0:
+        raise ValueError(f"aa_equivalents must be > 0, got {aa_eq}")
+
+    activator_eq, base_eq = derive_equivalents(aa_eq)
+
+    resolved_volume_mode = volume_mode if volume_mode is not None else config_defaults.get('volume_mode', 'stoichiometry')
+    resolved_output_dir = output_dir if output_dir is not None else config_defaults.get('output_directory', 'spps_output')
+    resolved_starting_num = starting_num if starting_num is not None else config_defaults.get('starting_vessel_number', 1)
+
+    return SynthesisConfig(
+        name=config_defaults.get('name', 'MySynthesis'),
+        vessel_label=config_defaults.get('vessel_label', 'Vessel'),
+        vessel_method=config_defaults.get('vessel_method', 'Teabag'),
+        volume_mode=resolved_volume_mode,
+        activator=config_defaults.get('activator', 'HBTU'),
+        use_oxyma=config_defaults.get('use_oxyma', True),
+        base=config_defaults.get('base', 'DIEA'),
+        deprotection_reagent=config_defaults.get('deprotection_reagent', 'Piperidine 20%'),
+        aa_equivalents=aa_eq,
+        activator_equivalents=activator_eq,
+        base_equivalents=base_eq,
+        include_bb_test=config_defaults.get('include_bb_test', True),
+        include_kaiser_test=config_defaults.get('include_kaiser_test', False),
+        starting_vessel_number=resolved_starting_num,
+        output_directory=resolved_output_dir,
+        resin_mass_strategy=config_defaults.get('resin_mass_strategy', 'fixed'),
+        fixed_resin_mass_g=config_defaults.get('fixed_resin_mass_g', 0.1),
+        target_yield_mg=config_defaults.get('target_yield_mg', None),
+    )
+
+
+def calc_yields_and_solubility(
+    vessels: List[Vessel],
+    residue_info_map: Dict,
+) -> Tuple[List[YieldResult], Dict]:
+    """Calculate yields and run solubility analysis for each vessel.
+
+    Args:
+        vessels: List of Vessel objects with resin_mass_g and substitution_mmol_g set
+        residue_info_map: Token -> ResidueInfo map
+
+    Returns:
+        Tuple of (yield_results, solubility_results) where solubility_results
+        is keyed by vessel.number
+    """
+    yield_results: List[YieldResult] = []
+    for vessel in vessels:
+        peptide_mw = calc_peptide_mw(
+            vessel.original_tokens, FREE_RESIDUE_MW, residue_info_map
+        )
+        yield_mg = calc_theoretical_yield(
+            vessel.resin_mass_g,
+            vessel.substitution_mmol_g,
+            vessel.length,
+            peptide_mw,
+        )
+        formula = build_yield_formula(
+            vessel.resin_mass_g,
+            vessel.substitution_mmol_g,
+            vessel.length,
+            peptide_mw,
+            yield_mg,
+        )
+        yield_results.append(YieldResult(
+            vessel_number=vessel.number,
+            vessel_name=vessel.name,
+            peptide_mw=round(peptide_mw, 2),
+            sequence_length=vessel.length,
+            resin_mass_g=vessel.resin_mass_g,
+            substitution_mmol_g=vessel.substitution_mmol_g,
+            theoretical_yield_mg=round(yield_mg, 2),
+            formula_shown=formula,
+        ))
+
+    solubility_results: Dict = {}
+    for vessel in vessels:
+        result = analyze_peptide(vessel.original_tokens)
+        solubility_results[vessel.number] = result
+
+    return yield_results, solubility_results
+
+
+def apply_target_resin_mass(
+    vessels: List[Vessel],
+    config: SynthesisConfig,
+    residue_info_map: Dict,
+) -> None:
+    """Apply resin mass to each vessel using determine_resin_mass, modifying in place.
+
+    Args:
+        vessels: List of Vessel objects to update
+        config: SynthesisConfig with resin_mass_strategy and related fields
+        residue_info_map: Token -> ResidueInfo map
+
+    Raises:
+        ValueError: If resin mass cannot be determined for any vessel
+    """
+    for vessel in vessels:
+        try:
+            vessel.resin_mass_g = determine_resin_mass(vessel, config, residue_info_map)
+        except Exception as exc:
+            raise ValueError(
+                f"Could not back-calculate resin mass for vessel {vessel.number} "
+                f"({vessel.name}): {exc}"
+            ) from exc
+
+
 class SynthesisGuideUseCase:
     """Orchestrates the full SPPS synthesis guide generation workflow."""
 
@@ -131,41 +261,8 @@ class SynthesisGuideUseCase:
         # 1. Build coupling cycles
         coupling_cycles = build_coupling_cycles(vessels)
 
-        # 2. Calculate yields
-        yield_results: List[YieldResult] = []
-        for vessel in vessels:
-            peptide_mw = calc_peptide_mw(
-                vessel.original_tokens, FREE_RESIDUE_MW, residue_info_map
-            )
-            yield_mg = calc_theoretical_yield(
-                vessel.resin_mass_g,
-                vessel.substitution_mmol_g,
-                vessel.length,
-                peptide_mw,
-            )
-            formula = build_yield_formula(
-                vessel.resin_mass_g,
-                vessel.substitution_mmol_g,
-                vessel.length,
-                peptide_mw,
-                yield_mg,
-            )
-            yield_results.append(YieldResult(
-                vessel_number=vessel.number,
-                vessel_name=vessel.name,
-                peptide_mw=round(peptide_mw, 2),
-                sequence_length=vessel.length,
-                resin_mass_g=vessel.resin_mass_g,
-                substitution_mmol_g=vessel.substitution_mmol_g,
-                theoretical_yield_mg=round(yield_mg, 2),
-                formula_shown=formula,
-            ))
-
-        # 3. Solubility analysis
-        solubility_results = {}
-        for vessel in vessels:
-            result = analyze_peptide(vessel.original_tokens)
-            solubility_results[vessel.number] = result
+        # 2 & 3. Calculate yields and solubility
+        yield_results, solubility_results = calc_yields_and_solubility(vessels, residue_info_map)
 
         # 4 & 5. Generate cycle guide (PDF + DOCX)
         safe_name = config.name.replace(' ', '_').replace('/', '-')

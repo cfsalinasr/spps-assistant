@@ -165,17 +165,18 @@ def _build_coupling_label(config: SynthesisConfig, token: str) -> str:
 # Cover page
 # ---------------------------------------------------------------------------
 
-def _build_cover(doc: Document, synthesis_name: str, vessels: List[Vessel],
-                 yield_results: List[YieldResult]) -> None:
+def _build_cover(doc: Document, synthesis_name: str, date_str: str,
+                 vessels: List[Vessel], yield_results: List[YieldResult]) -> None:
     """Append the cover page (title, metadata table, vessel summary) to *doc*."""
     doc.add_heading('SPPS Synthesis Guide', 0)
     doc.add_heading(synthesis_name, 1)
 
     # Metadata
-    meta = doc.add_table(rows=5, cols=2)
+    meta = doc.add_table(rows=6, cols=2)
     meta.style = 'Table Grid'
     meta_data = [
-        ('Date:', '______________________________'),
+        ('Prepared:', date_str),
+        ('Date signed:', '______________________________'),
         ('Operator:', '______________________________'),
         ('Synthesizer:', '______________________________'),
         ('Project:', '______________________________'),
@@ -366,7 +367,7 @@ def _add_cycle_page(doc: Document, cycle: CouplingCycle,
 def generate_cycle_guide_docx(
     path: Path,
     synthesis_name: str,
-    date_str: str,  # noqa: S1172 — kept for API compatibility (date stamped on cover)
+    date_str: str,
     vessels: List[Vessel],
     coupling_cycles: List[CouplingCycle],
     config: SynthesisConfig,
@@ -380,7 +381,7 @@ def generate_cycle_guide_docx(
     doc = Document()
 
     # Cover
-    _build_cover(doc, synthesis_name, vessels, yield_results)
+    _build_cover(doc, synthesis_name, date_str, vessels, yield_results)
 
     # Coupling cycle pages
     for i, cycle in enumerate(coupling_cycles):

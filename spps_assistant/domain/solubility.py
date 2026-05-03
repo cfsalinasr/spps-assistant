@@ -260,7 +260,6 @@ def get_solubilization_recommendation(
 
 def analyze_peptide(
     tokens: List[str],
-    _residue_info_map: dict,
     kd_scale: Optional[Dict] = None,
     eisenberg_scale: Optional[Dict] = None,
     bm_scale: Optional[Dict] = None,
@@ -270,7 +269,6 @@ def analyze_peptide(
 
     Args:
         tokens: List of residue tokens
-        residue_info_map: Dict mapping token -> ResidueInfo (may be empty)
         kd_scale: Kyte-Doolittle scale (uses domain.constants default if None)
         eisenberg_scale: Eisenberg scale (uses domain.constants default if None)
         bm_scale: Black & Mould scale (uses domain.constants default if None)

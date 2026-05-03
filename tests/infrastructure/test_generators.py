@@ -71,7 +71,7 @@ def _make_yield(vessel):
 
 def _make_sol(tokens, info=None):
     """Run solubility analysis on the given tokens."""
-    return analyze_peptide(tokens, info or {})
+    return analyze_peptide(tokens)
 
 
 def _make_materials_row(token='A'):

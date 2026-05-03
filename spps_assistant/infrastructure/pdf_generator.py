@@ -138,7 +138,6 @@ def _build_coupling_label(config: SynthesisConfig, token: str) -> str:
 
 def _header_paragraph(
     synthesis_name: str,
-    _date_str: str,
     cycle_num: Optional[int],
     total_cycles: Optional[int],
 ) -> List:
@@ -160,7 +159,7 @@ def _header_paragraph(
 
 def _build_cover_elements(
     synthesis_name: str,
-    _date_str: str,
+    date_str: str,
     vessels: List[Vessel],
     yield_results: List[YieldResult],
 ) -> List:
@@ -174,7 +173,8 @@ def _build_cover_elements(
 
     # Metadata table
     meta_data = [
-        ['Date:', '______________________________'],
+        ['Prepared:', date_str],
+        ['Date signed:', '______________________________'],
         ['Operator:', '______________________________'],
         ['Synthesizer:', '______________________________'],
         ['Project:', '______________________________'],
@@ -385,7 +385,7 @@ def _build_cycle_page_elements(
     elems = []
 
     # Header
-    elems.extend(_header_paragraph('', '', cycle.cycle_number, cycle.total_cycles))
+    elems.extend(_header_paragraph('', cycle.cycle_number, cycle.total_cycles))
 
     # AA dispatch
     elems.append(Paragraph(

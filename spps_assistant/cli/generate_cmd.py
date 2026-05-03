@@ -203,10 +203,31 @@ def _calc_yields_and_solubility(vessels, residue_info_map: Dict):
 
     solubility_results = {}
     for vessel in vessels:
-        sol = analyze_peptide(vessel.original_tokens, residue_info_map)
+        sol = analyze_peptide(vessel.original_tokens)
         solubility_results[vessel.number] = sol
 
     return yield_results, solubility_results
+
+
+def _confirm_reversal_or_abort(vessels, non_interactive: bool) -> None:
+    """Show the reversal confirmation table and abort if the user declines."""
+    if non_interactive:
+        return
+    from spps_assistant.cli.prompts import display_reversal_table
+    if not display_reversal_table(vessels):
+        console.print("[yellow]Aborted by user.[/yellow]")
+        sys.exit(0)
+
+
+def _confirm_run_or_abort(vessels, config, yield_results, solubility_results,
+                          non_interactive: bool) -> None:
+    """Show the run summary and abort if the user declines."""
+    if non_interactive:
+        return
+    from spps_assistant.cli.prompts import display_run_summary
+    if not display_run_summary(vessels, config, yield_results, solubility_results):
+        console.print("[yellow]Aborted by user.[/yellow]")
+        sys.exit(0)
 
 
 @click.command('generate')
@@ -249,7 +270,6 @@ def generate(
     from spps_assistant.domain.sequence import get_unique_tokens
     from spps_assistant.cli.prompts import (
         prompt_residue_mws, prompt_synthesis_config, prompt_resin_params,
-        display_reversal_table, display_run_summary
     )
 
     db = SQLiteRepository()
@@ -270,11 +290,7 @@ def generate(
     # ------------------------------------------------------------------ #
     # Step d-e: Show reversal confirmation table                          #
     # ------------------------------------------------------------------ #
-    if not non_interactive:
-        confirmed = display_reversal_table(vessels)
-        if not confirmed:
-            console.print("[yellow]Aborted by user.[/yellow]")
-            sys.exit(0)
+    _confirm_reversal_or_abort(vessels, non_interactive)
 
     # ------------------------------------------------------------------ #
     # Step f: Load residue MW from materials file or DB                   #
@@ -332,10 +348,7 @@ def generate(
     # ------------------------------------------------------------------ #
     # Step l: Run summary confirmation                                     #
     # ------------------------------------------------------------------ #
-    if not non_interactive:
-        if not display_run_summary(vessels, config, yield_results, solubility_results):
-            console.print("[yellow]Aborted by user.[/yellow]")
-            sys.exit(0)
+    _confirm_run_or_abort(vessels, config, yield_results, solubility_results, non_interactive)
 
     # ------------------------------------------------------------------ #
     # Step m: Generate output files                                        #

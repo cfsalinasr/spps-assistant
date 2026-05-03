@@ -222,7 +222,7 @@ def test_gravy_hydrophilic_peptide():
 def test_analyze_peptide_returns_result():
     """analyze_peptide returns a SolubilityResult."""
     from spps_assistant.domain.models import SolubilityResult
-    result = analyze_peptide(['A', 'G', 'K', 'W'], {})
+    result = analyze_peptide(['A', 'G', 'K', 'W'])
     assert isinstance(result, SolubilityResult)
     assert result.light_sensitive is True  # W present
     assert isinstance(result.kd_avg, float)

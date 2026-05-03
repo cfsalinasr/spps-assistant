@@ -1,9 +1,8 @@
 """Main synthesis guide use case — orchestrates the full generate workflow."""
 
-import os
 from datetime import date
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from spps_assistant.application.ports import DatabaseRepository, ConfigRepository
 from spps_assistant.domain.models import (
@@ -55,7 +54,6 @@ def determine_resin_mass(
     vessel: Vessel,
     config: SynthesisConfig,
     residue_info_map: Dict,
-    _all_yields: Optional[List[float]] = None,
 ) -> float:
     """Determine resin mass for a vessel based on config strategy.
 
@@ -63,7 +61,6 @@ def determine_resin_mass(
         vessel: Vessel object
         config: SynthesisConfig with resin_mass_strategy field
         residue_info_map: Token -> ResidueInfo map
-        all_yields: Pre-computed yield estimates (for target_highest/average)
 
     Returns:
         Resin mass in grams
@@ -167,7 +164,7 @@ class SynthesisGuideUseCase:
         # 3. Solubility analysis
         solubility_results = {}
         for vessel in vessels:
-            result = analyze_peptide(vessel.original_tokens, residue_info_map)
+            result = analyze_peptide(vessel.original_tokens)
             solubility_results[vessel.number] = result
 
         # 4 & 5. Generate cycle guide (PDF + DOCX)

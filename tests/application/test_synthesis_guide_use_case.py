@@ -187,10 +187,12 @@ class TestBuildConfigFromDefaults:
             build_config_from_defaults({'aa_equivalents': 0})
 
     def test_activator_base_eq_derived_from_aa_eq(self):
-        """activator_equivalents and base_equivalents both equal aa_eq when aa_eq=4.0."""
+        """activator_equivalents and base_equivalents match derive_equivalents output."""
+        from spps_assistant.domain.stoichiometry import derive_equivalents
+        act_eq, base_eq = derive_equivalents(4.0)
         cfg = build_config_from_defaults({'aa_equivalents': 4.0})
-        assert cfg.activator_equivalents == pytest.approx(4.0)
-        assert cfg.base_equivalents == pytest.approx(4.0)
+        assert cfg.activator_equivalents == pytest.approx(act_eq)
+        assert cfg.base_equivalents == pytest.approx(base_eq)
 
     def test_defaults_used_when_keys_absent(self):
         """Hardcoded fallbacks apply when config_defaults is empty."""
@@ -275,12 +277,16 @@ class TestApplyTargetResinMass:
         )
 
     def test_modifies_resin_mass_in_place(self):
-        """apply_target_resin_mass sets vessel.resin_mass_g to a positive value."""
+        """apply_target_resin_mass sets vessel.resin_mass_g to a positive value different from initial."""
         v = self._vessel(1, 'P1', 'A')
-        info = {'A': self._info('A', 'A')}
-        config = _config(resin_mass_strategy='target', target_yield_mg=5.0,
-                         fixed_resin_mass_g=0.1)
+        info = {'A': ResidueInfo(
+            token='A', base_code='A', protection='',
+            fmoc_mw=311.3, free_mw=71.08, stock_conc=0.5,
+        )}
+        config = _config(resin_mass_strategy='target', target_yield_mg=5.0, fixed_resin_mass_g=0.1)
+        original_mass = v.resin_mass_g
         apply_target_resin_mass([v], config, info)
+        assert v.resin_mass_g != original_mass
         assert v.resin_mass_g > 0
 
     def test_raises_on_back_calc_failure(self):

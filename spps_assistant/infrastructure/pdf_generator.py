@@ -14,6 +14,7 @@ from reportlab.platypus import (
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
 from spps_assistant.domain.constants import THREE_LETTER_CODE
+from spps_assistant.domain.sequence import token_to_3letter
 from spps_assistant.domain.models import (
     CouplingCycle, SynthesisConfig, Vessel, YieldResult, SolubilityResult, MaterialsRow
 )
@@ -104,20 +105,10 @@ COUPLING_STYLE = TableStyle([
 ])
 
 
-def _token_to_3letter(token: str) -> str:
-    """Convert token to 3-letter display name."""
-    from spps_assistant.domain.sequence import parse_token
-    try:
-        base, prot = parse_token(token)
-    except ValueError:
-        return token
-    three = THREE_LETTER_CODE.get(base, base)
-    return f"{three}({prot})" if prot else three
-
 
 def _build_coupling_label(config: SynthesisConfig, token: str) -> str:
     """Build activator/coupling label string for GMP table."""
-    three = _token_to_3letter(token)
+    three = token_to_3letter(token)
     act = config.activator
     base = config.base
 
@@ -243,7 +234,7 @@ def _build_aa_dispatch_table(
     data = [['Residue (3-letter)', 'Fmoc-MW (g/mol)', 'mmol', 'Volume (mL)', 'Formula', 'Status', 'Vessels']]
 
     for token, vessel_nums in cycle.residues_at_position.items():
-        three = _token_to_3letter(token)
+        three = token_to_3letter(token)
         n_v = len(vessel_nums)
 
         if token in residue_info_map:
@@ -341,7 +332,7 @@ def _build_vessel_assignment_line(cycle: CouplingCycle, config: SynthesisConfig)
         idx = cycle.cycle_number - 1
         if idx < len(vessel.reversed_tokens):
             tok = vessel.reversed_tokens[idx]
-            three = _token_to_3letter(tok)
+            three = token_to_3letter(tok)
             line = (
                 f"{config.vessel_label} <b>{vessel.number}</b> [{vessel.name}]: "
                 f"{three}"
@@ -362,7 +353,7 @@ def _build_secondary_coupling_table(cycle: CouplingCycle, config: SynthesisConfi
         idx = cycle.cycle_number - 1
         if idx < len(vessel.reversed_tokens):
             tok = vessel.reversed_tokens[idx]
-            three = _token_to_3letter(tok)
+            three = token_to_3letter(tok)
         else:
             three = 'OUT'
         rows.append([

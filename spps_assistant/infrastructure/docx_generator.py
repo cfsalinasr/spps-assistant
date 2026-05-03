@@ -11,6 +11,7 @@ from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
 from spps_assistant.domain.constants import THREE_LETTER_CODE
+from spps_assistant.domain.sequence import token_to_3letter
 from spps_assistant.domain.models import (
     CouplingCycle, SynthesisConfig, Vessel, YieldResult, SolubilityResult
 )
@@ -29,16 +30,6 @@ COUPLING_DURATION = '30 min'
 # Helpers
 # ---------------------------------------------------------------------------
 
-
-def _token_to_3letter(token: str) -> str:
-    """Convert a bracket-notation token (e.g. 'C(Trt)') to its 3-letter display form."""
-    from spps_assistant.domain.sequence import parse_token
-    try:
-        base, prot = parse_token(token)
-    except ValueError:
-        return token
-    three = THREE_LETTER_CODE.get(base, base)
-    return f"{three}({prot})" if prot else three
 
 
 def _set_cell_bg(cell, hex_color: str) -> None:
@@ -146,7 +137,7 @@ def _add_heading(doc: Document, text: str, level: int = 1) -> None:
 
 def _build_coupling_label(config: SynthesisConfig, token: str) -> str:
     """Build coupling label for DOCX table."""
-    three = _token_to_3letter(token)
+    three = token_to_3letter(token)
     act = config.activator
     base = config.base
     if act in ('DIC', 'DCC'):
@@ -221,7 +212,7 @@ def _build_aa_dispatch_data(cycle: CouplingCycle, config: SynthesisConfig,
 
     aa_data = [['Residue', 'Fmoc-MW', 'mmol', 'Volume (mL)', 'Formula', 'Status', 'Vessels']]
     for token, vessel_nums in cycle.residues_at_position.items():
-        three = _token_to_3letter(token)
+        three = token_to_3letter(token)
         n_v = len(vessel_nums)
         if token in residue_info_map:
             res = residue_info_map[token]
@@ -281,7 +272,7 @@ def _add_vessel_assignment(doc: Document, cycle: CouplingCycle, config: Synthesi
         idx = cycle.cycle_number - 1
         if idx < len(vessel.reversed_tokens):
             tok = vessel.reversed_tokens[idx]
-            three = _token_to_3letter(tok)
+            three = token_to_3letter(tok)
             text = f"  {config.vessel_label} {vessel.number} [{vessel.name}]: {three}"
         else:
             text = f"  {config.vessel_label} {vessel.number} [{vessel.name}]: OUT"
@@ -296,7 +287,7 @@ def _add_secondary_coupling_table(doc: Document, cycle: CouplingCycle) -> None:
         idx = cycle.cycle_number - 1
         if idx < len(vessel.reversed_tokens):
             tok = vessel.reversed_tokens[idx]
-            three = _token_to_3letter(tok)
+            three = token_to_3letter(tok)
         else:
             three = 'OUT'
         sec_data.append([

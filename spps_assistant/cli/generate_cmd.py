@@ -90,30 +90,6 @@ def _load_materials_file(materials_path: str):
     return residue_info_map
 
 
-def _auto_resolve_residues(unique_tokens, db, residue_info_map: Dict) -> Dict:
-    """Auto-resolve missing residues from DB then defaults."""
-    from spps_assistant.domain.models import ResidueInfo
-    from spps_assistant.domain.sequence import parse_token as _pt
-    from spps_assistant.domain.constants import FMOC_MW_DEFAULTS, FREE_RESIDUE_MW
-
-    for tok in unique_tokens:
-        if tok in residue_info_map:
-            continue
-        existing = db.get_residue(tok)
-        if existing:
-            residue_info_map[tok] = existing
-            continue
-        try:
-            base, prot = _pt(tok)
-        except ValueError:
-            base, prot = tok, ''
-        fmoc_mw = FMOC_MW_DEFAULTS.get(tok, FMOC_MW_DEFAULTS.get(base, 353.4))
-        free_mw = FREE_RESIDUE_MW.get(base, 111.10)
-        residue_info_map[tok] = ResidueInfo(
-            token=tok, base_code=base, protection=prot,
-            fmoc_mw=fmoc_mw, free_mw=free_mw, stock_conc=0.5,
-        )
-    return residue_info_map
 
 
 def _build_non_interactive_config(config_defaults: Dict, volume_mode: Optional[str],
@@ -270,6 +246,7 @@ def generate(
     from spps_assistant.domain.sequence import get_unique_tokens
     from spps_assistant.cli.prompts import (
         prompt_residue_mws, prompt_synthesis_config, prompt_resin_params,
+        auto_resolve_residues,
     )
 
     db = SQLiteRepository()
@@ -307,7 +284,7 @@ def generate(
     if not non_interactive:
         residue_info_map = prompt_residue_mws(unique_tokens, db, residue_info_map)
     else:
-        residue_info_map = _auto_resolve_residues(unique_tokens, db, residue_info_map)
+        residue_info_map = auto_resolve_residues(unique_tokens, db, residue_info_map)
 
     # ------------------------------------------------------------------ #
     # Step h: Prompt synthesis parameters                                  #

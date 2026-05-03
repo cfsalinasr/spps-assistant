@@ -69,31 +69,6 @@ def _load_materials_map(materials_path: str) -> Dict:
     return residue_info_map
 
 
-def _auto_resolve_mw(unique_tokens, db, residue_info_map: Dict) -> Dict:
-    """Fill missing tokens from DB or built-in defaults."""
-    from spps_assistant.domain.models import ResidueInfo
-    from spps_assistant.domain.sequence import parse_token as _pt
-    from spps_assistant.domain.constants import FMOC_MW_DEFAULTS, FREE_RESIDUE_MW
-
-    for tok in unique_tokens:
-        if tok in residue_info_map:
-            continue
-        existing = db.get_residue(tok)
-        if existing:
-            residue_info_map[tok] = existing
-            continue
-        try:
-            base, prot = _pt(tok)
-        except ValueError:
-            base, prot = tok, ''
-        fmoc_mw = FMOC_MW_DEFAULTS.get(tok, FMOC_MW_DEFAULTS.get(base, 353.4))
-        free_mw = FREE_RESIDUE_MW.get(base, 111.10)
-        residue_info_map[tok] = ResidueInfo(
-            token=tok, base_code=base, protection=prot,
-            fmoc_mw=fmoc_mw, free_mw=free_mw, stock_conc=0.5,
-        )
-    return residue_info_map
-
 
 @click.command('materials')
 @click.option('--input', '-i', 'input_path', required=True, type=click.Path(exists=True),
@@ -123,7 +98,7 @@ def materials(
     from spps_assistant.application.materials import MaterialsUseCase
     from spps_assistant.domain.sequence import get_unique_tokens
     from spps_assistant.domain.models import SynthesisConfig
-    from spps_assistant.cli.prompts import prompt_residue_mws
+    from spps_assistant.cli.prompts import prompt_residue_mws, auto_resolve_residues
 
     db = SQLiteRepository()
     config_repo = YAMLConfigRepository()
@@ -143,7 +118,7 @@ def materials(
     if not non_interactive:
         residue_info_map = prompt_residue_mws(unique_tokens, db, residue_info_map)
     else:
-        residue_info_map = _auto_resolve_mw(unique_tokens, db, residue_info_map)
+        residue_info_map = auto_resolve_residues(unique_tokens, db, residue_info_map)
 
     config = SynthesisConfig(
         name=config_defaults.get('name', 'MySynthesis'),

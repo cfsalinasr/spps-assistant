@@ -21,6 +21,28 @@ from spps_assistant.domain.sequence import parse_token
 console = Console()
 
 
+def auto_resolve_residues(unique_tokens, db, residue_info_map: Dict) -> Dict:
+    """Fill missing tokens from DB or built-in defaults (non-interactive path)."""
+    for tok in unique_tokens:
+        if tok in residue_info_map:
+            continue
+        existing = db.get_residue(tok)
+        if existing:
+            residue_info_map[tok] = existing
+            continue
+        try:
+            base, prot = parse_token(tok)
+        except ValueError:
+            base, prot = tok, ''
+        fmoc_mw = FMOC_MW_DEFAULTS.get(tok, FMOC_MW_DEFAULTS.get(base, 353.4))
+        free_mw = FREE_RESIDUE_MW.get(base, 111.10)
+        residue_info_map[tok] = ResidueInfo(
+            token=tok, base_code=base, protection=prot,
+            fmoc_mw=fmoc_mw, free_mw=free_mw, stock_conc=0.5,
+        )
+    return residue_info_map
+
+
 def prompt_residue_mws(
     tokens: List[str],
     db,

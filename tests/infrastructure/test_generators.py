@@ -11,18 +11,18 @@ from spps_assistant.domain.models import (
 from spps_assistant.domain.sequence import tokenize
 from spps_assistant.domain.solubility import analyze_peptide
 from spps_assistant.application.synthesis_guide import build_coupling_cycles
+from spps_assistant.domain.sequence import token_to_3letter as _pdf_token_3letter
+from spps_assistant.domain.sequence import token_to_3letter as _docx_token_3letter
 from spps_assistant.infrastructure.pdf_generator import (
     generate_cycle_guide_pdf,
     generate_peptide_info_pdf,
     generate_materials_pdf,
     _build_coupling_label as _pdf_coupling_label,
-    _token_to_3letter as _pdf_token_3letter,
 )
 from spps_assistant.infrastructure.docx_generator import (
     generate_cycle_guide_docx,
     generate_peptide_info_docx,
     _build_coupling_label as _docx_coupling_label,
-    _token_to_3letter as _docx_token_3letter,
 )
 
 

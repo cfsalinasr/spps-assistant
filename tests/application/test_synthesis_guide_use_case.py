@@ -182,8 +182,8 @@ class TestBuildConfigFromDefaults:
         assert cfg.starting_vessel_number == 5
 
     def test_aa_eq_zero_raises_value_error(self):
-        """aa_equivalents <= 0 raises ValueError."""
-        with pytest.raises(ValueError):
+        """aa_equivalents <= 0 raises ValueError with descriptive message."""
+        with pytest.raises(ValueError, match="aa_equivalents must be > 0"):
             build_config_from_defaults({'aa_equivalents': 0})
 
     def test_activator_base_eq_derived_from_aa_eq(self):
@@ -259,6 +259,18 @@ class TestCalcYieldsAndSolubility:
         info = {'A': self._info('A', 'A')}
         _, sol = calc_yields_and_solubility([v], info)
         assert isinstance(sol[1], SolubilityResult)
+
+    def test_yield_values_are_numerically_correct(self):
+        """Yield MW and theoretical yield match domain formula for known inputs."""
+        from spps_assistant.domain.yield_calc import calc_peptide_mw, calc_theoretical_yield
+        from spps_assistant.domain.constants import FREE_RESIDUE_MW
+        v = self._vessel(1, 'P1', 'A', resin_mass_g=0.1, sub=0.3)
+        info = {'A': self._info('A', 'A', free_mw=71.08)}
+        yields, _ = calc_yields_and_solubility([v], info)
+        expected_mw = calc_peptide_mw(v.original_tokens, FREE_RESIDUE_MW, info)
+        expected_yield = calc_theoretical_yield(v.resin_mass_g, v.substitution_mmol_g, v.length, expected_mw)
+        assert yields[0].peptide_mw == pytest.approx(expected_mw, abs=0.01)
+        assert yields[0].theoretical_yield_mg == pytest.approx(expected_yield, abs=0.01)
 
 
 # ── apply_target_resin_mass ──────────────────────────────────────────────────

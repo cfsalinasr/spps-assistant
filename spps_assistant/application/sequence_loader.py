@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from spps_assistant.domain.models import ResidueInfo, Vessel
+from spps_assistant.infrastructure.fasta_parser import parse_fasta
+from spps_assistant.infrastructure.materials_parser import load_materials_file
 
 
 def parse_and_validate_sequences(fasta_path: Path) -> List[Tuple[str, str, List[str]]]:
@@ -22,7 +24,6 @@ def parse_and_validate_sequences(fasta_path: Path) -> List[Tuple[str, str, List[
     Raises:
         ValueError: If the file cannot be parsed or any token is invalid.
     """
-    from spps_assistant.infrastructure.fasta_parser import parse_fasta
     from spps_assistant.domain.sequence import tokenize, validate_tokens
     from spps_assistant.domain.constants import VALID_BASE_CODES
 
@@ -96,8 +97,6 @@ def load_materials_map(materials_path: Path) -> Dict[str, ResidueInfo]:
     Raises:
         ValueError: If the file cannot be loaded for any reason.
     """
-    from spps_assistant.infrastructure.materials_parser import load_materials_file
-
     try:
         records = load_materials_file(materials_path)
     except Exception as exc:

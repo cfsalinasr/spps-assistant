@@ -60,7 +60,10 @@ def materials(
     console.print(f"  Found [bold]{len(parsed_sequences)}[/bold] sequence(s).")
 
     fixed_resin_mass_g = float(config_defaults.get('fixed_resin_mass_g', 0.1))
-    vessels = build_vessels(parsed_sequences, starting_num, resin_mass_g=fixed_resin_mass_g)
+    substitution_mmol_g = float(config_defaults.get('substitution_mmol_g', 0.3))
+    vessels = build_vessels(parsed_sequences, starting_num,
+                            resin_mass_g=fixed_resin_mass_g,
+                            substitution_mmol_g=substitution_mmol_g)
 
     # Load MW data
     residue_info_map = {}

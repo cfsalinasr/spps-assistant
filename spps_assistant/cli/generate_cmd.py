@@ -198,6 +198,8 @@ def generate(
             config=config,
             residue_info_map=residue_info_map,
             vessels=vessels,
+            yield_results=yield_results,
+            solubility_results=solubility_results,
         )
     except Exception as e:
         console.print(f"[red]Error generating files: {e}[/red]")

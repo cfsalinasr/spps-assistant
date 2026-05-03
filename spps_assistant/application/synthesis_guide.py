@@ -225,6 +225,8 @@ class SynthesisGuideUseCase:
         config: SynthesisConfig,
         residue_info_map: Dict,
         vessels: List[Vessel],
+        yield_results: Optional[List[YieldResult]] = None,
+        solubility_results: Optional[Dict] = None,
     ) -> Dict[str, str]:
         """Execute the synthesis guide generation workflow.
 
@@ -242,6 +244,8 @@ class SynthesisGuideUseCase:
             config: SynthesisConfig parameters
             residue_info_map: Token -> ResidueInfo map
             vessels: List of Vessel objects
+            yield_results: Optional pre-computed yield results to avoid recomputation
+            solubility_results: Optional pre-computed solubility results to avoid recomputation
 
         Returns:
             Dict mapping output file types to their paths
@@ -261,8 +265,9 @@ class SynthesisGuideUseCase:
         # 1. Build coupling cycles
         coupling_cycles = build_coupling_cycles(vessels)
 
-        # 2 & 3. Calculate yields and solubility
-        yield_results, solubility_results = calc_yields_and_solubility(vessels, residue_info_map)
+        # 2 & 3. Calculate yields and solubility (use pre-computed if provided)
+        if yield_results is None or solubility_results is None:
+            yield_results, solubility_results = calc_yields_and_solubility(vessels, residue_info_map)
 
         # 4 & 5. Generate cycle guide (PDF + DOCX)
         safe_name = config.name.replace(' ', '_').replace('/', '-')

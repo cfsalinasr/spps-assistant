@@ -100,8 +100,8 @@ class TestBuildVessels:
     def test_reversed_tokens_are_reverse_of_original(self):
         """Each vessel's reversed_tokens is the reverse of original_tokens."""
         vessels = build_vessels(self._parsed(), starting_num=1)
-        for v in vessels:
-            assert v.reversed_tokens == list(reversed(v.original_tokens))
+        assert vessels[0].reversed_tokens == ["K", "L", "G", "A"]
+        assert vessels[1].reversed_tokens == ["W", "F"]
 
     def test_default_resin_params_applied(self):
         """Default resin_mass_g=0.1 and substitution_mmol_g=0.3 are set."""
@@ -151,3 +151,32 @@ class TestLoadMaterialsMap:
         missing = tmp_path / "no_such_file.csv"
         with pytest.raises(ValueError, match="Could not load materials file"):
             load_materials_map(missing)
+
+
+# ---------------------------------------------------------------------------
+# TestSequenceLoaderIntegration
+# ---------------------------------------------------------------------------
+
+class TestSequenceLoaderIntegration:
+
+    def test_all_fasta_tokens_present_in_materials_map(self, tmp_path):
+        """Every token from parsed FASTA sequences appears as a key in the materials map."""
+        fasta_content = ">Pep1\nAG\n"
+        csv_content = (
+            "ResidueCode,ProtectionGroup,FmocMW_g_mol,FreeAA_MW_g_mol,Density_g_mL,Notes\n"
+            "A,,311.3,71.08,,Fmoc-Ala-OH\n"
+            "G,,297.3,57.05,,Fmoc-Gly-OH\n"
+        )
+
+        fasta_path = tmp_path / "seqs.fasta"
+        fasta_path.write_text(fasta_content, encoding="utf-8")
+
+        csv_path = tmp_path / "mats.csv"
+        csv_path.write_text(csv_content, encoding="utf-8")
+
+        parsed = parse_and_validate_sequences(fasta_path)
+        materials = load_materials_map(csv_path)
+
+        all_tokens = {token for _name, _seq, tokens in parsed for token in tokens}
+        for token in all_tokens:
+            assert token in materials, f"Token '{token}' not found in materials map"

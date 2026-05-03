@@ -27,7 +27,7 @@ def parse_and_validate_sequences(fasta_path: Path) -> List[Tuple[str, str, List[
     from spps_assistant.domain.constants import VALID_BASE_CODES
 
     try:
-        sequences = parse_fasta(Path(fasta_path))
+        sequences = parse_fasta(fasta_path)
     except Exception as exc:
         raise ValueError(f"Could not parse FASTA file: {exc}") from exc
 
@@ -99,7 +99,7 @@ def load_materials_map(materials_path: Path) -> Dict[str, ResidueInfo]:
     from spps_assistant.infrastructure.materials_parser import load_materials_file
 
     try:
-        records = load_materials_file(Path(materials_path))
+        records = load_materials_file(materials_path)
     except Exception as exc:
         raise ValueError(
             f"Could not load materials file '{materials_path}': {exc}"

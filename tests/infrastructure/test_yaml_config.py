@@ -121,7 +121,7 @@ class TestGetSetField:
 
     def test_set_field_bool(self, config_repo):
         """Boolean value is stored and retrieved correctly."""
-        config_repo.set_field('include_kaiser_test', True)
+        config_repo.set_field('include_kaiser_test', value=True)
         assert config_repo.get_field('include_kaiser_test') is True
 
     def test_set_field_none(self, config_repo):

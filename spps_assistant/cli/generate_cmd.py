@@ -85,7 +85,8 @@ def _load_materials_file(materials_path: str):
             )
         console.print(f"  Loaded {len(residue_info_map)} residues from materials file.")
     except Exception as e:
-        console.print(f"[yellow]Warning: could not load materials file: {e}[/yellow]")
+        console.print(f"[red]Could not load materials file: {e}[/red]")
+        sys.exit(1)
     return residue_info_map
 
 
@@ -119,6 +120,13 @@ def _build_non_interactive_config(config_defaults: Dict, volume_mode: Optional[s
                                   output_dir: Optional[str], starting_num: int):
     """Build a SynthesisConfig from config defaults without user prompts."""
     from spps_assistant.domain.models import SynthesisConfig
+    from spps_assistant.domain.stoichiometry import derive_equivalents
+
+    aa_eq = float(config_defaults.get('aa_equivalents', 3.0))
+    if aa_eq <= 0:
+        console.print("[red]Reactant excess (aa_equivalents) must be > 0.[/red]")
+        sys.exit(1)
+    act_eq, base_eq = derive_equivalents(aa_eq)
 
     return SynthesisConfig(
         name=config_defaults.get('name', 'MySynthesis'),
@@ -129,9 +137,9 @@ def _build_non_interactive_config(config_defaults: Dict, volume_mode: Optional[s
         use_oxyma=config_defaults.get('use_oxyma', True),
         base=config_defaults.get('base', 'DIEA'),
         deprotection_reagent=config_defaults.get('deprotection_reagent', 'Piperidine 20%'),
-        aa_equivalents=float(config_defaults.get('aa_equivalents', 3.0)),
-        activator_equivalents=float(config_defaults.get('activator_equivalents', 3.0)),
-        base_equivalents=float(config_defaults.get('base_equivalents', 6.0)),
+        aa_equivalents=aa_eq,
+        activator_equivalents=act_eq,
+        base_equivalents=base_eq,
         include_bb_test=config_defaults.get('include_bb_test', True),
         include_kaiser_test=config_defaults.get('include_kaiser_test', False),
         starting_vessel_number=starting_num,
@@ -157,11 +165,14 @@ def _apply_target_resin_mass(vessels, config, residue_info_map: Dict):
                 vessel.length,
                 pep_mw,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            raise ValueError(
+                f"Could not back-calculate resin mass for vessel "
+                f"{vessel.number} ({vessel.name}): {e}"
+            ) from e
 
 
-def _calc_yields_and_solubility(vessels, config, residue_info_map: Dict):
+def _calc_yields_and_solubility(vessels, residue_info_map: Dict):
     """Compute yield results and solubility results for all vessels."""
     from spps_assistant.domain.yield_calc import (
         calc_peptide_mw, calc_theoretical_yield, build_yield_formula
@@ -315,7 +326,7 @@ def generate(
     # Step j-k: Calculate yields and solubility                           #
     # ------------------------------------------------------------------ #
     yield_results, solubility_results = _calc_yields_and_solubility(
-        vessels, config, residue_info_map
+        vessels, residue_info_map
     )
 
     # ------------------------------------------------------------------ #

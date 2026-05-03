@@ -44,7 +44,7 @@ print_menu() {
     echo -e "  ${GREEN}4.${RESET}  Configure synthesis defaults ${DIM}(activator, base, equivalents…)${RESET}"
     echo -e "  ${GREEN}5.${RESET}  Exit"
     echo ""
-    echo -n "  Enter your choice [A, 1-5]: "
+    echo -n "  Enter your choice [A, 0-5]: "
 }
 
 # Open a native macOS file-chooser dialog and return the selected POSIX path.
@@ -149,6 +149,15 @@ do_generate() {
         pause; return
     fi
 
+    case "$input_path" in
+        *.fasta|*.fa|*.FASTA|*.FA) ;;
+        *)
+            echo ""
+            echo -e "  ${RED}Invalid file: expected a FASTA file (.fasta / .fa).${RESET}"
+            pause; return
+            ;;
+    esac
+
     echo ""
     echo -e "  ${GREEN}Selected:${RESET} $input_path"
     echo ""
@@ -230,6 +239,15 @@ do_materials() {
         echo -e "  ${RED}File not found: $input_path${RESET}"
         pause; return
     fi
+
+    case "$input_path" in
+        *.fasta|*.fa|*.FASTA|*.FA) ;;
+        *)
+            echo ""
+            echo -e "  ${RED}Invalid file: expected a FASTA file (.fasta / .fa).${RESET}"
+            pause; return
+            ;;
+    esac
 
     echo ""
     echo -e "  ${GREEN}Selected:${RESET} $input_path"

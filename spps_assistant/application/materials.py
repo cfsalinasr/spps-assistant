@@ -37,9 +37,9 @@ def _calc_volume(count_per_vessel: Dict, config: SynthesisConfig,
     if config.volume_mode == 'legacy':
         return calc_volume_legacy(n_uses), 0.0
     avg_resin_mmol = (
-        sum(v_obj.resin_mass_g * v_obj.substitution_mmol_g
-            for v_obj, _ in count_per_vessel.values())
-        / len(count_per_vessel)
+        sum(v_obj.resin_mass_g * v_obj.substitution_mmol_g * occ
+            for v_obj, occ in count_per_vessel.values())
+        / n_uses
     )
     volume_ml = calc_volume_stoichiometry(n_uses, eff_eq, avg_resin_mmol, stock_conc)
     return volume_ml, avg_resin_mmol
@@ -101,9 +101,12 @@ def build_materials_rows(
             count_per_vessel, config, eff_eq, n_uses, res_info.stock_conc
         )
 
-        # For liquid reagents: report volume in µL (pipette, no weighing)
         volume_ul = None
-        if res_info.density_g_ml is not None and res_info.density_g_ml > 0:
+        if res_info.density_g_ml is not None:
+            if res_info.density_g_ml <= 0:
+                raise ValueError(
+                    f"Invalid density_g_ml for {tok}: {res_info.density_g_ml}"
+                )
             volume_ul = round(mass_mg / res_info.density_g_ml, 1)
 
         try:

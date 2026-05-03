@@ -73,10 +73,15 @@ class TestSheetStructure:
         assert 'MySynth' in str(ws['A1'].value)
 
     def test_header_row_has_nine_columns(self, tmp_path):
-        """Header row (row 2) has nine non-empty column headers."""
+        """Header row (row 2) matches the documented nine-column spec."""
         ws = self._load_ws(tmp_path)
         headers = [ws.cell(row=2, column=c).value for c in range(1, 10)]
-        assert all(h is not None for h in headers)
+        expected_headers = [
+            'Residue', 'Protection', 'Fmoc-MW (g/mol)', 'mmol needed',
+            'Mass (mg) / — liquid', 'Stock Conc (M)', 'Volume (mL / µL)',
+            'Formula', 'Notes',
+        ]
+        assert headers == expected_headers
 
     def test_header_residue_column(self, tmp_path):
         """First column header is 'Residue'."""
@@ -126,6 +131,12 @@ class TestDataValues:
         """Volume in mL is written to column 7."""
         vals = self._load_data_row(tmp_path, _make_row(volume_ml=1.234))
         assert vals[6] == pytest.approx(1.234)
+
+    def test_volume_ul_written(self, tmp_path):
+        """Liquid rows write volume_ul as a numeric value in column 7; mass placeholder in col 5."""
+        vals = self._load_data_row(tmp_path, _make_row(volume_ul=1234.0))
+        assert vals[4] is None
+        assert vals[6] == pytest.approx(1234.0)
 
     def test_notes_written(self, tmp_path):
         """Notes text is written to column 9."""

@@ -115,8 +115,6 @@ def build_yield_formula(
     Returns:
         Formula string for display/GMP documentation
     """
-    resin_mmol = resin_mass_g * substitution_mmol_g
-    eff = 0.98 ** sequence_length
     return (
         f"{resin_mass_g:.4f} g × {substitution_mmol_g:.4f} mmol/g × "
         f"0.98^{sequence_length} × {peptide_mw:.2f} g/mol = {yield_mg:.2f} mg"

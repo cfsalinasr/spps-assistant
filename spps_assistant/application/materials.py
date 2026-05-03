@@ -1,7 +1,7 @@
 """Materials explosion use case — weekly reagent planning."""
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from spps_assistant.application.ports import DatabaseRepository
 from spps_assistant.domain.models import MaterialsRow, SynthesisConfig, Vessel
@@ -10,6 +10,53 @@ from spps_assistant.domain.stoichiometry import (
 )
 from spps_assistant.domain.sequence import get_unique_tokens, parse_token
 from spps_assistant.domain.constants import THREE_LETTER_CODE
+
+
+def _count_token_per_vessel(tok: str, vessels: List[Vessel]) -> Dict:
+    """Return a dict mapping vessel number to (Vessel, occurrences) for a token."""
+    count_per_vessel = {}
+    for vessel in vessels:
+        occurrences = vessel.original_tokens.count(tok)
+        if occurrences > 0:
+            count_per_vessel[vessel.number] = (vessel, occurrences)
+    return count_per_vessel
+
+
+def _calc_total_mmol(count_per_vessel: Dict, eff_eq: float) -> float:
+    """Compute total mmol needed across all vessels."""
+    total_mmol = 0.0
+    for _vessel_num, (v_obj, occurrences) in count_per_vessel.items():
+        resin_mmol = v_obj.resin_mass_g * v_obj.substitution_mmol_g
+        total_mmol += eff_eq * resin_mmol * occurrences
+    return total_mmol
+
+
+def _calc_volume(count_per_vessel: Dict, config: SynthesisConfig,
+                 eff_eq: float, n_uses: int, stock_conc: float) -> Tuple[float, float]:
+    """Return (volume_ml, avg_resin_mmol) for the given usage data."""
+    if config.volume_mode == 'legacy':
+        return calc_volume_legacy(n_uses), 0.0
+    avg_resin_mmol = (
+        sum(v_obj.resin_mass_g * v_obj.substitution_mmol_g * occ
+            for v_obj, occ in count_per_vessel.values())
+        / n_uses
+    )
+    volume_ml = calc_volume_stoichiometry(n_uses, eff_eq, avg_resin_mmol, stock_conc)
+    return volume_ml, avg_resin_mmol
+
+
+def _build_formula(volume_ul: Optional[float], mass_mg: float, density: Optional[float],
+                   volume_mode: str, n_uses: int, eff_eq: float,
+                   avg_resin_mmol: float, stock_conc: float) -> str:
+    """Build the GMP formula string for a materials row."""
+    if volume_ul is not None:
+        return f"V(µL) = {mass_mg:.2f} mg / {density} g/mL = {volume_ul:.1f} µL"
+    if volume_mode != 'legacy':
+        return (
+            f"V = ({n_uses} × {eff_eq} eq × {avg_resin_mmol:.4f} mmol) "
+            f"/ {stock_conc} M"
+        )
+    return f"V = {n_uses} uses × 2 mL"
 
 
 def build_materials_rows(
@@ -38,39 +85,29 @@ def build_materials_rows(
             continue
 
         res_info = residue_info_map[tok]
-
-        # Count how many vessels need this token (and how many times)
-        count_per_vessel = {}
-        for vessel in vessels:
-            occurrences = vessel.original_tokens.count(tok)
-            if occurrences > 0:
-                count_per_vessel[vessel.number] = (vessel, occurrences)
+        count_per_vessel = _count_token_per_vessel(tok, vessels)
 
         if not count_per_vessel:
             continue
 
-        # Compute total mmol needed
-        total_mmol = 0.0
-        for vessel, (v_obj, occurrences) in count_per_vessel.items():
-            resin_mmol = v_obj.resin_mass_g * v_obj.substitution_mmol_g
-            # equivalents × resin_mmol per occurrence
-            total_mmol += config.aa_equivalents * resin_mmol * occurrences
-
+        # Effective equivalents: global reactant excess × per-reagent multiplier
+        eff_eq = config.aa_equivalents * res_info.equivalents_multiplier
+        total_mmol = _calc_total_mmol(count_per_vessel, eff_eq)
         mass_mg = calc_mass_mg(total_mmol, res_info.fmoc_mw)
 
         # Volume
         n_uses = sum(occ for _, occ in count_per_vessel.values())
-        if config.volume_mode == 'legacy':
-            volume_ml = calc_volume_legacy(n_uses)
-        else:
-            avg_resin_mmol = (
-                sum(v_obj.resin_mass_g * v_obj.substitution_mmol_g
-                    for v_obj, _ in count_per_vessel.values())
-                / len(count_per_vessel)
-            )
-            volume_ml = calc_volume_stoichiometry(
-                n_uses, config.aa_equivalents, avg_resin_mmol, res_info.stock_conc
-            )
+        volume_ml, avg_resin_mmol = _calc_volume(
+            count_per_vessel, config, eff_eq, n_uses, res_info.stock_conc
+        )
+
+        volume_ul = None
+        if res_info.density_g_ml is not None:
+            if res_info.density_g_ml <= 0:
+                raise ValueError(
+                    f"Invalid density_g_ml for {tok}: {res_info.density_g_ml}"
+                )
+            volume_ul = round(mass_mg / res_info.density_g_ml, 1)
 
         try:
             base, prot = parse_token(tok)
@@ -78,14 +115,14 @@ def build_materials_rows(
             base, prot = tok, ''
 
         three_letter = THREE_LETTER_CODE.get(base, base)
-        display_name = three_letter if not prot else f"{three_letter}({prot})"
+        if prot:
+            display_name = f"{three_letter}({prot})"
+        else:
+            display_name = three_letter
 
-        formula = (
-            f"V = ({n_uses} × {config.aa_equivalents} eq × "
-            f"{avg_resin_mmol if config.volume_mode != 'legacy' else 'N/A':.4f} mmol) "
-            f"/ {res_info.stock_conc} M"
-            if config.volume_mode != 'legacy'
-            else f"V = {n_uses} uses × 2 mL"
+        formula = _build_formula(
+            volume_ul, mass_mg, res_info.density_g_ml,
+            config.volume_mode, n_uses, eff_eq, avg_resin_mmol, res_info.stock_conc
         )
 
         rows.append(MaterialsRow(
@@ -98,6 +135,7 @@ def build_materials_rows(
             volume_ml=round(volume_ml, 3),
             notes=f"Fmoc-{display_name}-OH",
             formula=formula,
+            volume_ul=volume_ul,
         ))
 
     return rows
@@ -107,6 +145,7 @@ class MaterialsUseCase:
     """Weekly materials explosion use case."""
 
     def __init__(self, db: DatabaseRepository):
+        """Initialise with a database repository for residue lookups."""
         self.db = db
 
     def run(

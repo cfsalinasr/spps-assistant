@@ -7,6 +7,7 @@ from rich.console import Console
 from rich.table import Table as RichTable
 from rich.panel import Panel
 
+from spps_assistant.domain.stoichiometry import derive_equivalents
 from spps_assistant.domain.models import (
     ResidueInfo, SynthesisConfig, Vessel, YieldResult, SolubilityResult
 )
@@ -18,6 +19,28 @@ from spps_assistant.domain.constants import (
 from spps_assistant.domain.sequence import parse_token
 
 console = Console()
+
+
+def auto_resolve_residues(unique_tokens, db, residue_info_map: Dict) -> Dict:
+    """Fill missing tokens from DB or built-in defaults (non-interactive path)."""
+    for tok in unique_tokens:
+        if tok in residue_info_map:
+            continue
+        existing = db.get_residue(tok)
+        if existing:
+            residue_info_map[tok] = existing
+            continue
+        try:
+            base, prot = parse_token(tok)
+        except ValueError:
+            base, prot = tok, ''
+        fmoc_mw = FMOC_MW_DEFAULTS.get(tok, FMOC_MW_DEFAULTS.get(base, 353.4))
+        free_mw = FREE_RESIDUE_MW.get(base, 111.10)
+        residue_info_map[tok] = ResidueInfo(
+            token=tok, base_code=base, protection=prot,
+            fmoc_mw=fmoc_mw, free_mw=free_mw, stock_conc=0.5,
+        )
+    return residue_info_map
 
 
 def prompt_residue_mws(
@@ -178,22 +201,15 @@ def prompt_synthesis_config(config_defaults: Optional[Dict] = None) -> Synthesis
     )
 
     aa_eq = click.prompt(
-        "  AA equivalents",
-        default=float(d.get('aa_equivalents', 3.0)),
+        "  Reactant excess (applied to all reagents; per-reagent multipliers\n"
+        "  from the Equivalents column in your materials file are applied automatically)",
+        default=float(d.get('aa_equivalents', 10.0)),
         type=float,
     )
-
-    act_eq = click.prompt(
-        "  Activator equivalents",
-        default=float(d.get('activator_equivalents', 3.0)),
-        type=float,
-    )
-
-    base_eq = click.prompt(
-        "  Base equivalents",
-        default=float(d.get('base_equivalents', 6.0)),
-        type=float,
-    )
+    if aa_eq <= 0:
+        click.echo("  Error: Reactant excess must be > 0.", err=True)
+        raise SystemExit(1)
+    act_eq, base_eq = derive_equivalents(aa_eq)
 
     include_bb = click.confirm(
         "  Include Bromophenol Blue test?",
@@ -267,12 +283,12 @@ def prompt_resin_params(vessels: List[Vessel], config: SynthesisConfig) -> List[
     for vessel in vessels:
         console.print(f"\n  [bold]Vessel {vessel.number}: {vessel.name}[/bold]")
         vessel.resin_mass_g = click.prompt(
-            f"    Resin mass (g)",
+            "    Resin mass (g)",
             default=config.fixed_resin_mass_g,
             type=float,
         )
         vessel.substitution_mmol_g = click.prompt(
-            f"    Substitution (mmol/g)",
+            "    Substitution (mmol/g)",
             default=0.3,
             type=float,
         )
@@ -335,9 +351,8 @@ def display_run_summary(
         f"[bold]Base:[/bold] {config.base}  "
         f"[bold]Mode:[/bold] {config.volume_mode}  "
         f"[bold]Oxyma:[/bold] {'Yes' if config.use_oxyma else 'No'}\n"
-        f"[bold]AA eq:[/bold] {config.aa_equivalents}  "
-        f"[bold]Act. eq:[/bold] {config.activator_equivalents}  "
-        f"[bold]Base eq:[/bold] {config.base_equivalents}  "
+        f"[bold]Reactant excess:[/bold] {config.aa_equivalents}x  "
+        f"(per-reagent multipliers from Equivalents column applied automatically)  "
         f"[bold]Deprotection:[/bold] {config.deprotection_reagent}"
     )
     console.print(Panel(cfg_text, title="Synthesis Configuration", border_style="blue"))

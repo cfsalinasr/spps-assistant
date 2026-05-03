@@ -11,6 +11,7 @@ from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
 from spps_assistant.domain.constants import THREE_LETTER_CODE
+from spps_assistant.domain.sequence import token_to_3letter
 from spps_assistant.domain.models import (
     CouplingCycle, SynthesisConfig, Vessel, YieldResult, SolubilityResult
 )
@@ -19,29 +20,27 @@ from spps_assistant.domain.stoichiometry import (
 )
 
 # ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+WASH_DURATION = '2 × 1 min'
+COUPLING_DURATION = '30 min'
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-
-def _token_to_3letter(token: str) -> str:
-    from spps_assistant.domain.sequence import parse_token
-    try:
-        base, prot = parse_token(token)
-    except ValueError:
-        return token
-    three = THREE_LETTER_CODE.get(base, base)
-    return f"{three}({prot})" if prot else three
 
 
 def _set_cell_bg(cell, hex_color: str) -> None:
     """Set a table cell background colour."""
     tc = cell._tc
-    tcPr = tc.get_or_add_tcPr()
+    tc_pr = tc.get_or_add_tcPr()
     shd = OxmlElement('w:shd')
     shd.set(qn('w:val'), 'clear')
     shd.set(qn('w:color'), 'auto')
     shd.set(qn('w:fill'), hex_color.lstrip('#'))
-    tcPr.append(shd)
+    tc_pr.append(shd)
 
 
 def _set_cell_borders(table) -> None:
@@ -49,16 +48,16 @@ def _set_cell_borders(table) -> None:
     for row in table.rows:
         for cell in row.cells:
             tc = cell._tc
-            tcPr = tc.get_or_add_tcPr()
-            tcBorders = OxmlElement('w:tcBorders')
+            tc_pr = tc.get_or_add_tcPr()
+            tc_borders = OxmlElement('w:tcBorders')
             for border_name in ('top', 'left', 'bottom', 'right'):
                 border = OxmlElement(f'w:{border_name}')
                 border.set(qn('w:val'), 'single')
                 border.set(qn('w:sz'), '4')
                 border.set(qn('w:space'), '0')
                 border.set(qn('w:color'), '888888')
-                tcBorders.append(border)
-            tcPr.append(tcBorders)
+                tc_borders.append(border)
+            tc_pr.append(tc_borders)
 
 
 def _style_header_row(row, bg_hex: str = '2C3E50') -> None:
@@ -70,6 +69,25 @@ def _style_header_row(row, bg_hex: str = '2C3E50') -> None:
                 run.bold = True
                 run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
                 run.font.size = Pt(9)
+
+
+def _fill_table_row(row, row_data: List[str], n_cols: int) -> None:
+    """Fill a single table row with text content."""
+    for c_idx, cell_text in enumerate(row_data):
+        if c_idx < n_cols:
+            cell = row.cells[c_idx]
+            para = cell.paragraphs[0]
+            run = para.add_run(str(cell_text))
+            run.font.size = Pt(9)
+            para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+
+def _set_col_widths(table, col_widths: List[float]) -> None:
+    """Apply column widths (in cm) to a table."""
+    for i, width in enumerate(col_widths):
+        if i < len(table.columns):
+            for cell in table.columns[i].cells:
+                cell.width = Cm(width)
 
 
 def _add_table_with_header(doc: Document, data: List[List[str]],
@@ -93,22 +111,12 @@ def _add_table_with_header(doc: Document, data: List[List[str]],
     table.style = 'Table Grid'
     table.alignment = WD_TABLE_ALIGNMENT.LEFT
 
-    # Set column widths
     if col_widths:
-        for i, width in enumerate(col_widths):
-            if i < len(table.columns):
-                for cell in table.columns[i].cells:
-                    cell.width = Cm(width)
+        _set_col_widths(table, col_widths)
 
     for r_idx, row_data in enumerate(data):
         row = table.rows[r_idx]
-        for c_idx, cell_text in enumerate(row_data):
-            if c_idx < n_cols:
-                cell = row.cells[c_idx]
-                para = cell.paragraphs[0]
-                run = para.add_run(str(cell_text))
-                run.font.size = Pt(9)
-                para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        _fill_table_row(row, row_data, n_cols)
 
         if r_idx == 0:
             _style_header_row(row, header_bg)
@@ -120,6 +128,7 @@ def _add_table_with_header(doc: Document, data: List[List[str]],
 
 
 def _add_heading(doc: Document, text: str, level: int = 1) -> None:
+    """Add a bold heading paragraph to *doc* at the given heading level."""
     para = doc.add_paragraph(text)
     run = para.runs[0] if para.runs else para.add_run(text)
     run.bold = True
@@ -128,7 +137,7 @@ def _add_heading(doc: Document, text: str, level: int = 1) -> None:
 
 def _build_coupling_label(config: SynthesisConfig, token: str) -> str:
     """Build coupling label for DOCX table."""
-    three = _token_to_3letter(token)
+    three = token_to_3letter(token)
     act = config.activator
     base = config.base
     if act in ('DIC', 'DCC'):
@@ -147,16 +156,18 @@ def _build_coupling_label(config: SynthesisConfig, token: str) -> str:
 # Cover page
 # ---------------------------------------------------------------------------
 
-def _build_cover(doc: Document, synthesis_name: str, vessels: List[Vessel],
-                 yield_results: List[YieldResult]) -> None:
+def _build_cover(doc: Document, synthesis_name: str, date_str: str,
+                 vessels: List[Vessel], yield_results: List[YieldResult]) -> None:
+    """Append the cover page (title, metadata table, vessel summary) to *doc*."""
     doc.add_heading('SPPS Synthesis Guide', 0)
     doc.add_heading(synthesis_name, 1)
 
     # Metadata
-    meta = doc.add_table(rows=5, cols=2)
+    meta = doc.add_table(rows=6, cols=2)
     meta.style = 'Table Grid'
     meta_data = [
-        ('Date:', '______________________________'),
+        ('Prepared:', date_str),
+        ('Date signed:', '______________________________'),
         ('Operator:', '______________________________'),
         ('Synthesizer:', '______________________________'),
         ('Project:', '______________________________'),
@@ -193,33 +204,15 @@ def _build_cover(doc: Document, synthesis_name: str, vessels: List[Vessel],
 # Cycle pages
 # ---------------------------------------------------------------------------
 
-def _add_cycle_page(doc: Document, cycle: CouplingCycle,
-                    config: SynthesisConfig, residue_info_map: Dict) -> None:
-    """Add a single coupling cycle page to the DOCX document."""
+def _build_aa_dispatch_data(cycle: CouplingCycle, config: SynthesisConfig,
+                             residue_info_map: Dict, avg_resin_mmol: float) -> List[List[str]]:
+    """Build AA dispatch table data rows for a cycle page."""
     from spps_assistant.domain.sequence import parse_token
     from spps_assistant.domain.constants import FMOC_MW_DEFAULTS
 
-    # Header
-    p = doc.add_paragraph()
-    run = p.add_run(
-        f"Cycle {cycle.cycle_number} of {cycle.total_cycles}  |  "
-        f"Date: ________________  |  Operator: ________________"
-    )
-    run.bold = True
-    run.font.size = Pt(10)
-
-    # Average resin mmol
-    n_vessels = len(cycle.all_vessels)
-    avg_resin_mmol = (
-        sum(v.resin_mass_g * v.substitution_mmol_g for v in cycle.all_vessels) / n_vessels
-        if n_vessels else 0.03
-    )
-
-    # AA Dispatch table
-    doc.add_heading(f'Cycle {cycle.cycle_number} — AA Dispatch', 3)
     aa_data = [['Residue', 'Fmoc-MW', 'mmol', 'Volume (mL)', 'Formula', 'Status', 'Vessels']]
     for token, vessel_nums in cycle.residues_at_position.items():
-        three = _token_to_3letter(token)
+        three = token_to_3letter(token)
         n_v = len(vessel_nums)
         if token in residue_info_map:
             res = residue_info_map[token]
@@ -250,26 +243,88 @@ def _add_cycle_page(doc: Document, cycle: CouplingCycle,
             formula_str, '[ ]',
             ', '.join(str(vn) for vn in sorted(vessel_nums)),
         ])
+    return aa_data
 
-    _add_table_with_header(doc, aa_data)
-    doc.add_paragraph()
 
-    # Deprotection table
-    doc.add_heading('Deprotection', 3)
+def _build_deprotection_data(config: SynthesisConfig) -> List[List[str]]:
+    """Build deprotection steps table data."""
     dep_name = config.deprotection_reagent
     dep_data = [['[ ]', 'Step', 'Details', 'Time']]
     dep_data.append(['[ ]', '1. Deprotection', f'{dep_name} in DMF', '2 × 10 min'])
     dep_data.append(['[ ]', '2. DMF wash', 'DMF (3×)', '3 × 1 min'])
     if config.include_bb_test:
         dep_data.append(['[ ]', '3. BB test', 'Bromophenol Blue in DMF (1×)', '1 × 2 min'])
-        dep_data.append(['[ ]', '4. DMF wash', 'DMF (2×)', '2 × 1 min'])
-        dep_data.append(['[ ]', '5. DCM wash', 'DCM (2×)', '2 × 1 min'])
+        dep_data.append(['[ ]', '4. DMF wash', 'DMF (2×)', WASH_DURATION])
+        dep_data.append(['[ ]', '5. DCM wash', 'DCM (2×)', WASH_DURATION])
     else:
-        dep_data.append(['[ ]', '3. DMF wash', 'DMF (2×)', '2 × 1 min'])
-        dep_data.append(['[ ]', '4. DCM wash', 'DCM (2×)', '2 × 1 min'])
+        dep_data.append(['[ ]', '3. DMF wash', 'DMF (2×)', WASH_DURATION])
+        dep_data.append(['[ ]', '4. DCM wash', 'DCM (2×)', WASH_DURATION])
     if config.include_kaiser_test:
         dep_data.append(['[ ]', 'Kaiser test', 'Coupling completeness check', 'As needed'])
+    return dep_data
 
+
+def _add_vessel_assignment(doc: Document, cycle: CouplingCycle, config: SynthesisConfig) -> None:
+    """Add vessel assignment bullet lines to doc."""
+    p = doc.add_paragraph()
+    p.add_run('Vessel Assignment:').bold = True
+    for vessel in cycle.all_vessels:
+        idx = cycle.cycle_number - 1
+        if idx < len(vessel.reversed_tokens):
+            tok = vessel.reversed_tokens[idx]
+            three = token_to_3letter(tok)
+            text = f"  {config.vessel_label} {vessel.number} [{vessel.name}]: {three}"
+        else:
+            text = f"  {config.vessel_label} {vessel.number} [{vessel.name}]: OUT"
+        doc.add_paragraph(text, style='List Bullet')
+
+
+def _add_secondary_coupling_table(doc: Document, cycle: CouplingCycle) -> None:
+    """Add secondary coupling verification table (Teabag method only)."""
+    doc.add_heading('Secondary Coupling Verification', 3)
+    sec_data = [['Vessel #', 'Name', 'Residue', '1st [ ]', '2nd [ ]', '3rd [ ]', '4th [ ]']]
+    for vessel in cycle.all_vessels:
+        idx = cycle.cycle_number - 1
+        if idx < len(vessel.reversed_tokens):
+            tok = vessel.reversed_tokens[idx]
+            three = token_to_3letter(tok)
+        else:
+            three = 'OUT'
+        sec_data.append([
+            str(vessel.number), vessel.name, three,
+            '[ ]', '[ ]', '[ ]', '[ ]',
+        ])
+    _add_table_with_header(doc, sec_data)
+
+
+def _add_cycle_page(doc: Document, cycle: CouplingCycle,
+                    config: SynthesisConfig, residue_info_map: Dict) -> None:
+    """Add a single coupling cycle page to the DOCX document."""
+    # Header
+    p = doc.add_paragraph()
+    run = p.add_run(
+        f"Cycle {cycle.cycle_number} of {cycle.total_cycles}  |  "
+        f"Date: ________________  |  Operator: ________________"
+    )
+    run.bold = True
+    run.font.size = Pt(10)
+
+    # Average resin mmol
+    n_vessels = len(cycle.all_vessels)
+    avg_resin_mmol = (
+        sum(v.resin_mass_g * v.substitution_mmol_g for v in cycle.all_vessels) / n_vessels
+        if n_vessels else 0.03
+    )
+
+    # AA Dispatch table
+    doc.add_heading(f'Cycle {cycle.cycle_number} — AA Dispatch', 3)
+    aa_data = _build_aa_dispatch_data(cycle, config, residue_info_map, avg_resin_mmol)
+    _add_table_with_header(doc, aa_data)
+    doc.add_paragraph()
+
+    # Deprotection table
+    doc.add_heading('Deprotection', 3)
+    dep_data = _build_deprotection_data(config)
     _add_table_with_header(doc, dep_data, header_bg='1A5276')
     doc.add_paragraph()
 
@@ -279,44 +334,21 @@ def _add_cycle_page(doc: Document, cycle: CouplingCycle,
     coupling_label = _build_coupling_label(config, first_token)
 
     coup_data = [['[ ]', 'Step', 'Details', 'Time']]
-    coup_data.append(['[ ]', '1st coupling', coupling_label, '30 min'])
-    coup_data.append(['[ ]', '2nd coupling', f'Repeat: {coupling_label}', '30 min'])
-    coup_data.append(['[ ]', '3rd coupling', f'Repeat: {coupling_label}', '30 min'])
-    coup_data.append(['[ ]', '4th coupling', f'Repeat: {coupling_label}', '30 min'])
+    coup_data.append(['[ ]', '1st coupling', coupling_label, COUPLING_DURATION])
+    coup_data.append(['[ ]', '2nd coupling', f'Repeat: {coupling_label}', COUPLING_DURATION])
+    coup_data.append(['[ ]', '3rd coupling', f'Repeat: {coupling_label}', COUPLING_DURATION])
+    coup_data.append(['[ ]', '4th coupling', f'Repeat: {coupling_label}', COUPLING_DURATION])
     coup_data.append(['', 'Post-coupling wash', 'DMF (2×1 min), DCM (3×1 min)', '5 min'])
 
     _add_table_with_header(doc, coup_data, header_bg='1E8449')
     doc.add_paragraph()
 
     # Vessel assignment
-    p = doc.add_paragraph()
-    p.add_run('Vessel Assignment:').bold = True
-    for vessel in cycle.all_vessels:
-        idx = cycle.cycle_number - 1
-        if idx < len(vessel.reversed_tokens):
-            tok = vessel.reversed_tokens[idx]
-            three = _token_to_3letter(tok)
-            text = f"  {config.vessel_label} {vessel.number} [{vessel.name}]: {three}"
-        else:
-            text = f"  {config.vessel_label} {vessel.number} [{vessel.name}]: OUT"
-        doc.add_paragraph(text, style='List Bullet')
+    _add_vessel_assignment(doc, cycle, config)
 
     # Secondary coupling table (Teabag method only)
     if config.vessel_method == 'Teabag':
-        doc.add_heading('Secondary Coupling Verification', 3)
-        sec_data = [['Vessel #', 'Name', 'Residue', '1st [ ]', '2nd [ ]', '3rd [ ]', '4th [ ]']]
-        for vessel in cycle.all_vessels:
-            idx = cycle.cycle_number - 1
-            if idx < len(vessel.reversed_tokens):
-                tok = vessel.reversed_tokens[idx]
-                three = _token_to_3letter(tok)
-            else:
-                three = 'OUT'
-            sec_data.append([
-                str(vessel.number), vessel.name, three,
-                '[ ]', '[ ]', '[ ]', '[ ]',
-            ])
-        _add_table_with_header(doc, sec_data)
+        _add_secondary_coupling_table(doc, cycle)
 
 
 # ---------------------------------------------------------------------------
@@ -340,7 +372,7 @@ def generate_cycle_guide_docx(
     doc = Document()
 
     # Cover
-    _build_cover(doc, synthesis_name, vessels, yield_results)
+    _build_cover(doc, synthesis_name, date_str, vessels, yield_results)
 
     # Coupling cycle pages
     for i, cycle in enumerate(coupling_cycles):
@@ -421,7 +453,7 @@ def generate_peptide_info_docx(
             info_data += [
                 ['GRAVY score', f"{sol.gravy:.3f}" if sol.gravy is not None else '—'],
                 ['Net charge (pH 7)', f"{sol.net_charge_ph7:.2f}" if sol.net_charge_ph7 is not None else '—'],
-                ['pI', f"{sol.pI:.2f}" if sol.pI is not None else '—'],
+                ['pI', f"{sol.p_i:.2f}" if sol.p_i is not None else '—'],
                 ['Hydrophobicity (KD)', f"{sol.kd_avg:.3f}"],
                 ['Hydrophobicity (Eisenberg)', f"{sol.eisenberg_avg:.3f}"],
                 ['Hydrophobicity (Black & Mould)', f"{sol.black_mould_avg:.3f}"],

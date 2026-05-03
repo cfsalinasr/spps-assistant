@@ -16,6 +16,7 @@ _DB_PATH = _DB_DIR / 'spps_database.db'
 
 
 def _get_connection(db_path: Path = _DB_PATH) -> sqlite3.Connection:
+    """Open (or create) the SQLite database and return a Row-factory connection."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
@@ -29,13 +30,15 @@ def _init_db(db_path: Path = _DB_PATH) -> None:
         with conn:
             conn.executescript("""
                 CREATE TABLE IF NOT EXISTS residue_mw (
-                    token        TEXT PRIMARY KEY,
-                    base_code    TEXT NOT NULL,
-                    protection   TEXT NOT NULL DEFAULT '',
-                    fmoc_mw      REAL NOT NULL,
-                    free_mw      REAL NOT NULL,
-                    stock_conc   REAL NOT NULL DEFAULT 0.5,
-                    notes        TEXT NOT NULL DEFAULT ''
+                    token                  TEXT PRIMARY KEY,
+                    base_code              TEXT NOT NULL,
+                    protection             TEXT NOT NULL DEFAULT '',
+                    fmoc_mw                REAL NOT NULL,
+                    free_mw                REAL NOT NULL,
+                    stock_conc             REAL NOT NULL DEFAULT 0.5,
+                    notes                  TEXT NOT NULL DEFAULT '',
+                    density_g_ml           REAL DEFAULT NULL,
+                    equivalents_multiplier REAL NOT NULL DEFAULT 1.0
                 );
 
                 CREATE TABLE IF NOT EXISTS synthesis_defaults (
@@ -50,14 +53,15 @@ def _init_db(db_path: Path = _DB_PATH) -> None:
                     metadata_json   TEXT NOT NULL DEFAULT '{}'
                 );
             """)
-        # Migration: add density_g_ml to existing databases that predate this column
-        try:
-            conn.execute(
-                "ALTER TABLE residue_mw ADD COLUMN density_g_ml REAL DEFAULT NULL"
-            )
-            conn.commit()
-        except sqlite3.OperationalError:
-            pass  # Column already exists
+        for migration in (
+            "ALTER TABLE residue_mw ADD COLUMN density_g_ml REAL DEFAULT NULL",
+            "ALTER TABLE residue_mw ADD COLUMN equivalents_multiplier REAL NOT NULL DEFAULT 1.0",
+        ):
+            try:
+                conn.execute(migration)
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass  # Column already exists
     finally:
         conn.close()
 
@@ -73,10 +77,12 @@ class SQLiteRepository(DatabaseRepository):
     """
 
     def __init__(self, db_path: Path = _DB_PATH):
+        """Initialise the repository and ensure the schema exists."""
         self._db_path = Path(db_path)
         _init_db(self._db_path)
 
     def _conn(self) -> sqlite3.Connection:
+        """Return a fresh database connection for this repository instance."""
         return _get_connection(self._db_path)
 
     # ------------------------------------------------------------------ #
@@ -93,6 +99,7 @@ class SQLiteRepository(DatabaseRepository):
         stock_conc: float = 0.5,
         notes: str = '',
         density_g_ml: Optional[float] = None,
+        equivalents_multiplier: float = 1.0,
     ) -> None:
         """Upsert a residue MW record."""
         conn = self._conn()
@@ -102,19 +109,20 @@ class SQLiteRepository(DatabaseRepository):
                     """
                     INSERT INTO residue_mw
                         (token, base_code, protection, fmoc_mw, free_mw,
-                         stock_conc, notes, density_g_ml)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                         stock_conc, notes, density_g_ml, equivalents_multiplier)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(token) DO UPDATE SET
-                        base_code    = excluded.base_code,
-                        protection   = excluded.protection,
-                        fmoc_mw      = excluded.fmoc_mw,
-                        free_mw      = excluded.free_mw,
-                        stock_conc   = excluded.stock_conc,
-                        notes        = excluded.notes,
-                        density_g_ml = excluded.density_g_ml
+                        base_code              = excluded.base_code,
+                        protection             = excluded.protection,
+                        fmoc_mw                = excluded.fmoc_mw,
+                        free_mw                = excluded.free_mw,
+                        stock_conc             = excluded.stock_conc,
+                        notes                  = excluded.notes,
+                        density_g_ml           = excluded.density_g_ml,
+                        equivalents_multiplier = excluded.equivalents_multiplier
                     """,
                     (token, base_code, protection, fmoc_mw, free_mw,
-                     stock_conc, notes, density_g_ml),
+                     stock_conc, notes, density_g_ml, equivalents_multiplier),
                 )
         finally:
             conn.close()
@@ -135,6 +143,8 @@ class SQLiteRepository(DatabaseRepository):
                 fmoc_mw=row['fmoc_mw'],
                 free_mw=row['free_mw'],
                 stock_conc=row['stock_conc'],
+                density_g_ml=row['density_g_ml'],
+                equivalents_multiplier=row['equivalents_multiplier'] or 1.0,
             )
         finally:
             conn.close()
@@ -155,6 +165,7 @@ class SQLiteRepository(DatabaseRepository):
     # ------------------------------------------------------------------ #
 
     def save_default(self, key: str, value: str) -> None:
+        """Upsert a key/value synthesis default."""
         conn = self._conn()
         try:
             with conn:
@@ -170,6 +181,7 @@ class SQLiteRepository(DatabaseRepository):
             conn.close()
 
     def get_default(self, key: str) -> Optional[str]:
+        """Retrieve a synthesis default value by key, or None if absent."""
         conn = self._conn()
         try:
             row = conn.execute(
@@ -184,6 +196,7 @@ class SQLiteRepository(DatabaseRepository):
     # ------------------------------------------------------------------ #
 
     def log_synthesis(self, synthesis_name: str, metadata: Dict[str, Any]) -> None:
+        """Append a synthesis run record with today's date and JSON metadata."""
         today = date.today().isoformat()
         conn = self._conn()
         try:
@@ -211,7 +224,8 @@ class SQLiteRepository(DatabaseRepository):
             writer = csv.DictWriter(
                 f,
                 fieldnames=['token', 'base_code', 'protection', 'fmoc_mw',
-                            'free_mw', 'stock_conc', 'density_g_ml', 'notes'],
+                            'free_mw', 'stock_conc', 'density_g_ml',
+                            'equivalents_multiplier', 'notes'],
             )
             writer.writeheader()
             writer.writerows(rows)
@@ -232,6 +246,7 @@ class SQLiteRepository(DatabaseRepository):
                 stock_conc=rec.get('stock_conc', 0.5),
                 notes=rec.get('notes', ''),
                 density_g_ml=rec.get('density_g_ml'),
+                equivalents_multiplier=rec.get('equivalents_multiplier', 1.0),
             )
             count += 1
         return count

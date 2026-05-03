@@ -113,16 +113,16 @@ def calc_net_charge_ph7(tokens: List[str], pka_values: Dict[str, float]) -> floa
     Returns:
         Approximate net charge at pH 7.0
     """
-    pH = 7.0
+    ph = 7.0
     charge = 0.0
 
     # N-terminus (positive at pH < pKa)
     pka_n = pka_values.get('N_term', 8.0)
-    charge += 1.0 / (1.0 + 10 ** (pH - pka_n))
+    charge += 1.0 / (1.0 + 10 ** (ph - pka_n))
 
     # C-terminus (negative at pH > pKa)
     pka_c = pka_values.get('C_term', 3.1)
-    charge -= 1.0 / (1.0 + 10 ** (pka_c - pH))
+    charge -= 1.0 / (1.0 + 10 ** (pka_c - ph))
 
     for tok in tokens:
         try:
@@ -133,15 +133,51 @@ def calc_net_charge_ph7(tokens: List[str], pka_values: Dict[str, float]) -> floa
             pka = pka_values[base]
             if base in ('D', 'E', 'C', 'Y'):
                 # Acidic side chains (negative at pH > pKa)
-                charge -= 1.0 / (1.0 + 10 ** (pka - pH))
+                charge -= 1.0 / (1.0 + 10 ** (pka - ph))
             elif base in ('H', 'K', 'R'):
                 # Basic side chains (positive at pH < pKa)
-                charge += 1.0 / (1.0 + 10 ** (pH - pka))
+                charge += 1.0 / (1.0 + 10 ** (ph - pka))
 
     return round(charge, 3)
 
 
-def calc_pI(tokens: List[str], pka_values: Dict[str, float]) -> float:
+def _charge_at_ph(ph: float, tokens: List[str], pka_values: Dict[str, float]) -> float:
+    """Return the net charge of the peptide at the given pH."""
+    ch = 0.0
+    pka_n = pka_values.get('N_term', 8.0)
+    ch += 1.0 / (1.0 + 10 ** (ph - pka_n))
+    pka_c = pka_values.get('C_term', 3.1)
+    ch -= 1.0 / (1.0 + 10 ** (pka_c - ph))
+    for tok in tokens:
+        try:
+            base, _ = parse_token(tok)
+        except ValueError:
+            continue
+        if base in pka_values:
+            pka = pka_values[base]
+            if base in ('D', 'E', 'C', 'Y'):
+                ch -= 1.0 / (1.0 + 10 ** (pka - ph))
+            elif base in ('H', 'K', 'R'):
+                ch += 1.0 / (1.0 + 10 ** (ph - pka))
+    return ch
+
+
+def _bisect_pi(tokens: List[str], pka_values: Dict[str, float]) -> float:
+    """Find the pI by bisection over [0, 14]."""
+    lo, hi = 0.0, 14.0
+    for _ in range(100):
+        mid = (lo + hi) / 2.0
+        c = _charge_at_ph(mid, tokens, pka_values)
+        if abs(c) < 1e-6:
+            break
+        if c > 0:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2.0
+
+
+def calc_pi(tokens: List[str], pka_values: Dict[str, float]) -> float:
     """Calculate isoelectric point (pI) by bisection search.
 
     Args:
@@ -151,36 +187,7 @@ def calc_pI(tokens: List[str], pka_values: Dict[str, float]) -> float:
     Returns:
         Estimated pI
     """
-    def _charge_at_pH(pH: float) -> float:
-        ch = 0.0
-        pka_n = pka_values.get('N_term', 8.0)
-        ch += 1.0 / (1.0 + 10 ** (pH - pka_n))
-        pka_c = pka_values.get('C_term', 3.1)
-        ch -= 1.0 / (1.0 + 10 ** (pka_c - pH))
-        for tok in tokens:
-            try:
-                base, _ = parse_token(tok)
-            except ValueError:
-                continue
-            if base in pka_values:
-                pka = pka_values[base]
-                if base in ('D', 'E', 'C', 'Y'):
-                    ch -= 1.0 / (1.0 + 10 ** (pka - pH))
-                elif base in ('H', 'K', 'R'):
-                    ch += 1.0 / (1.0 + 10 ** (pH - pka))
-        return ch
-
-    lo, hi = 0.0, 14.0
-    for _ in range(100):
-        mid = (lo + hi) / 2.0
-        c = _charge_at_pH(mid)
-        if abs(c) < 1e-6:
-            break
-        if c > 0:
-            lo = mid
-        else:
-            hi = mid
-    return round((lo + hi) / 2.0, 2)
+    return round(_bisect_pi(tokens, pka_values), 2)
 
 
 def calc_gravy(tokens: List[str], kd_scale: Dict[str, float]) -> float:
@@ -197,6 +204,26 @@ def calc_gravy(tokens: List[str], kd_scale: Dict[str, float]) -> float:
         GRAVY score
     """
     return calc_hydrophobicity(tokens, kd_scale)
+
+
+def _hydrophobic_recommendation(base_codes: set) -> str:
+    """Return solubilization recommendation for a hydrophobic peptide."""
+    if base_codes & {'C', 'M', 'W'}:
+        return "50% Acetonitrile in water (contains C/M/W residues)"
+    return "50% DMSO in water"
+
+
+def _hydrophilic_recommendation(charge_fraction: float,
+                                 hydrophobic_fraction: float,
+                                 net_charge: float) -> str:
+    """Return solubilization recommendation for a hydrophilic peptide."""
+    if charge_fraction < 0.25:
+        return "DMSO 10-20 μL, then dilute with water"
+    if hydrophobic_fraction <= 0.50:
+        return "Water or PBS (pH 7.4)"
+    if net_charge < 0:
+        return "0.1 M ammonium bicarbonate"
+    return "Acetic acid (dilute, ~10%)"
 
 
 def get_solubilization_recommendation(
@@ -218,7 +245,6 @@ def get_solubilization_recommendation(
     Returns:
         Solubilization recommendation string
     """
-    # Extract base codes
     base_codes = set()
     for tok in tokens:
         try:
@@ -228,29 +254,12 @@ def get_solubilization_recommendation(
             pass
 
     if is_hydrophobic:
-        if base_codes & {'C', 'M', 'W'}:
-            return "50% Acetonitrile in water (contains C/M/W residues)"
-        else:
-            return "50% DMSO in water"
-    else:
-        # Hydrophilic
-        if charge_fraction < 0.25:
-            return "DMSO 10-20 μL, then dilute with water"
-        else:
-            # charge >= 25%
-            if hydrophobic_fraction <= 0.50:
-                return "Water or PBS (pH 7.4)"
-            else:
-                # high hydrophobic content
-                if net_charge < 0:
-                    return "0.1 M ammonium bicarbonate"
-                else:
-                    return "Acetic acid (dilute, ~10%)"
+        return _hydrophobic_recommendation(base_codes)
+    return _hydrophilic_recommendation(charge_fraction, hydrophobic_fraction, net_charge)
 
 
 def analyze_peptide(
     tokens: List[str],
-    residue_info_map: dict,
     kd_scale: Optional[Dict] = None,
     eisenberg_scale: Optional[Dict] = None,
     bm_scale: Optional[Dict] = None,
@@ -260,7 +269,6 @@ def analyze_peptide(
 
     Args:
         tokens: List of residue tokens
-        residue_info_map: Dict mapping token -> ResidueInfo (may be empty)
         kd_scale: Kyte-Doolittle scale (uses domain.constants default if None)
         eisenberg_scale: Eisenberg scale (uses domain.constants default if None)
         bm_scale: Black & Mould scale (uses domain.constants default if None)
@@ -285,7 +293,7 @@ def analyze_peptide(
     light_sensitive = check_light_sensitivity(tokens)
     orthogonal_groups = check_orthogonal_protection(tokens)
     net_charge = calc_net_charge_ph7(tokens, pka_values)
-    pI_val = calc_pI(tokens, pka_values)
+    pi_val = calc_pi(tokens, pka_values)
     gravy_val = calc_gravy(tokens, kd_scale)
 
     # Compute fractions for recommendation
@@ -315,7 +323,7 @@ def analyze_peptide(
         recommendation=recommendation,
         light_sensitive=light_sensitive,
         net_charge_ph7=round(net_charge, 3),
-        pI=round(pI_val, 2),
+        p_i=round(pi_val, 2),
         gravy=round(gravy_val, 3),
         orthogonal_groups=orthogonal_groups,
     )

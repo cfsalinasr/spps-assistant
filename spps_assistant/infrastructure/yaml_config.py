@@ -53,6 +53,7 @@ class YAMLConfigRepository(ConfigRepository):
     """
 
     def __init__(self, config_path: Path = _CONFIG_PATH):
+        """Initialise the repository and ensure the config file exists on disk."""
         self._path = Path(config_path)
         _ensure_config(self._path)
 

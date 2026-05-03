@@ -15,6 +15,72 @@ def _parse_float(val, default: float) -> float:
         return default
 
 
+def _parse_row(row_dict: Dict) -> Optional[Dict]:
+    """Parse a normalised row dict (lowercase keys, stripped string values) into a residue record.
+
+    Returns None if the row has no residue code.
+    """
+    residue_code = (
+        row_dict.get('residuecode') or
+        row_dict.get('residue_code') or
+        row_dict.get('code', '')
+    ).upper().strip()
+
+    if not residue_code:
+        return None
+
+    protection = (
+        row_dict.get('protectiongroup') or
+        row_dict.get('protection_group') or
+        row_dict.get('protection', '')
+    ).strip()
+
+    fmoc_mw = _parse_float(
+        row_dict.get('fmocmw_g_mol') or
+        row_dict.get('fmoc_mw_g_mol') or
+        row_dict.get('fmocmw') or
+        row_dict.get('mw_g_mol') or '',
+        0.0
+    )
+    free_mw = _parse_float(
+        row_dict.get('freeaa_mw_g_mol') or
+        row_dict.get('free_mw_g_mol') or
+        row_dict.get('freemw') or '',
+        0.0
+    )
+    stock_conc = _parse_float(
+        row_dict.get('stockconc_m') or
+        row_dict.get('stock_conc_m') or
+        row_dict.get('stock_conc') or '',
+        0.5
+    )
+
+    density_g_ml: Optional[float] = None
+    raw_density = row_dict.get('density_g_ml') or row_dict.get('density') or ''
+    if raw_density:
+        density_g_ml = _parse_float(raw_density, 0.0) or None
+
+    equivalents_multiplier = _parse_float(
+        row_dict.get('equivalents') or
+        row_dict.get('equivalents_multiplier') or '',
+        1.0
+    )
+
+    token = f"{residue_code}({protection})" if protection else residue_code
+
+    return {
+        'token': token,
+        'base_code': residue_code,
+        'protection': protection,
+        'fmoc_mw': fmoc_mw,
+        'free_mw': free_mw,
+        'stock_conc': stock_conc,
+        'density_g_ml': density_g_ml,
+        'equivalents_multiplier': equivalents_multiplier,
+        'notes': row_dict.get('notes', ''),
+    }
+
+
 def parse_materials_csv(path: Path) -> List[Dict]:
     """Parse a materials CSV file into a list of dicts.
 
@@ -45,66 +111,9 @@ def parse_materials_csv(path: Path) -> List[Dict]:
 
         for row in reader:
             norm_row = {k.lower().strip(): v.strip() for k, v in row.items() if k}
-
-            residue_code = (
-                norm_row.get('residuecode') or
-                norm_row.get('residue_code') or
-                norm_row.get('code', '')
-            ).strip().upper()
-
-            if not residue_code:
-                continue
-
-            protection = (
-                norm_row.get('protectiongroup') or
-                norm_row.get('protection_group') or
-                norm_row.get('protection', '')
-            ).strip()
-
-            fmoc_mw = _parse_float(
-                norm_row.get('fmocmw_g_mol') or
-                norm_row.get('fmoc_mw_g_mol') or
-                norm_row.get('fmocmw') or
-                norm_row.get('mw_g_mol') or '',
-                0.0
-            )
-
-            free_mw = _parse_float(
-                norm_row.get('freeaa_mw_g_mol') or
-                norm_row.get('free_mw_g_mol') or
-                norm_row.get('freemw') or '',
-                0.0
-            )
-
-            stock_conc = _parse_float(
-                norm_row.get('stockconc_m') or
-                norm_row.get('stock_conc_m') or
-                norm_row.get('stock_conc') or '',
-                0.5
-            )
-
-            density_g_ml: Optional[float] = None
-            raw_density = (
-                norm_row.get('density_g_ml') or
-                norm_row.get('density') or ''
-            )
-            if raw_density:
-                density_g_ml = _parse_float(raw_density, None)
-
-            notes = norm_row.get('notes', '')
-
-            token = f"{residue_code}({protection})" if protection else residue_code
-
-            results.append({
-                'token': token,
-                'base_code': residue_code,
-                'protection': protection,
-                'fmoc_mw': fmoc_mw,
-                'free_mw': free_mw,
-                'stock_conc': stock_conc,
-                'density_g_ml': density_g_ml,
-                'notes': notes,
-            })
+            record = _parse_row(norm_row)
+            if record is not None:
+                results.append(record)
 
     return results
 
@@ -143,58 +152,9 @@ def parse_materials_xlsx(path: Path) -> List[Dict]:
             headers[i]: (str(row[i]).strip() if row[i] is not None else '')
             for i in range(min(len(headers), len(row)))
         }
-
-        residue_code = (
-            row_dict.get('residuecode') or
-            row_dict.get('residue_code') or
-            row_dict.get('code', '')
-        ).upper().strip()
-
-        if not residue_code:
-            continue
-
-        protection = (
-            row_dict.get('protectiongroup') or
-            row_dict.get('protection_group') or
-            row_dict.get('protection', '')
-        ).strip()
-
-        fmoc_mw = _parse_float(
-            row_dict.get('fmocmw_g_mol') or
-            row_dict.get('fmoc_mw_g_mol') or
-            row_dict.get('mw_g_mol') or '',
-            0.0
-        )
-        free_mw = _parse_float(
-            row_dict.get('freeaa_mw_g_mol') or
-            row_dict.get('free_mw_g_mol') or '',
-            0.0
-        )
-        stock_conc = _parse_float(
-            row_dict.get('stockconc_m') or
-            row_dict.get('stock_conc_m') or '',
-            0.5
-        )
-
-        density_g_ml: Optional[float] = None
-        raw_density = row_dict.get('density_g_ml') or row_dict.get('density') or ''
-        if raw_density:
-            density_g_ml = _parse_float(raw_density, None)
-
-        notes = row_dict.get('notes', '')
-
-        token = f"{residue_code}({protection})" if protection else residue_code
-
-        results.append({
-            'token': token,
-            'base_code': residue_code,
-            'protection': protection,
-            'fmoc_mw': fmoc_mw,
-            'free_mw': free_mw,
-            'stock_conc': stock_conc,
-            'density_g_ml': density_g_ml,
-            'notes': notes,
-        })
+        record = _parse_row(row_dict)
+        if record is not None:
+            results.append(record)
 
     wb.close()
     return results

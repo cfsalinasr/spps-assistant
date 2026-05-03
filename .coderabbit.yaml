@@ -1,13 +1,9 @@
-version: "2"
-
 language: "en-US"
 
 tone_instructions: >
-  This is a scientific CLI tool used in GMP (Good Manufacturing Practice)
-  laboratory settings for peptide synthesis. Reviews should be precise,
-  technically rigorous, and flag any issues that could cause incorrect
-  stoichiometric calculations, wrong sequence reversals, or data integrity
-  problems in the persistent database. Correctness is paramount.
+  Scientific GMP lab CLI for parallel peptide synthesis. Reviews must be
+  technically rigorous — flag stoichiometric errors, sequence reversal bugs,
+  and database integrity issues. Correctness is paramount.
 
 knowledge_base:
   learnings:

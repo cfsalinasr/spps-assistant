@@ -11,7 +11,9 @@ class ResidueInfo:
     protection: str      # e.g. "Trt" or ""
     fmoc_mw: float       # g/mol for stoichiometry
     free_mw: float       # g/mol for peptide MW
-    stock_conc: float = 0.5   # M, default 0.5 M in DMF
+    stock_conc: float = 0.5          # M, default 0.5 M in DMF
+    density_g_ml: Optional[float] = None   # g/mL for liquids; None = solid
+    equivalents_multiplier: float = 1.0    # scales the global reactant excess
 
 
 @dataclass
@@ -25,6 +27,7 @@ class Vessel:
 
     @property
     def length(self) -> int:
+        """Return the number of residue tokens in the peptide sequence."""
         return len(self.original_tokens)
 
 
@@ -37,7 +40,7 @@ class SolubilityResult:
     recommendation: str
     light_sensitive: bool
     net_charge_ph7: Optional[float] = None
-    pI: Optional[float] = None
+    p_i: Optional[float] = None
     gravy: Optional[float] = None
     orthogonal_groups: List[str] = field(default_factory=list)
 
@@ -95,3 +98,4 @@ class MaterialsRow:
     volume_ml: float
     notes: str = ''
     formula: str = ''
+    volume_ul: Optional[float] = None   # set for liquid reagents; shows instead of mass_mg

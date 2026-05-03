@@ -1,73 +1,13 @@
 """spps-assistant materials — weekly materials explosion use case."""
 
 import sys
-from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 import click
 from rich.console import Console
 from rich.panel import Panel
 
 console = Console()
-
-
-def _parse_sequences_to_vessels(input_path: str, starting_num: int,
-                                 config_defaults: Dict) -> List:
-    """Parse FASTA and build Vessel objects, exiting on error."""
-    from spps_assistant.infrastructure.fasta_parser import parse_fasta
-    from spps_assistant.domain.sequence import tokenize, validate_tokens
-    from spps_assistant.domain.constants import VALID_BASE_CODES
-    from spps_assistant.domain.models import Vessel
-
-    console.print(f"\n[bold]Parsing sequences from:[/bold] {input_path}")
-    try:
-        sequences = parse_fasta(Path(input_path))
-    except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
-        sys.exit(1)
-
-    console.print(f"  Found [bold]{len(sequences)}[/bold] sequence(s).")
-
-    vessels = []
-    for i, (name, raw_seq) in enumerate(sequences):
-        tokens = tokenize(raw_seq)
-        errs = validate_tokens(tokens, VALID_BASE_CODES)
-        if errs:
-            for e in errs:
-                console.print(f"  [red]{e}[/red]")
-            sys.exit(1)
-        rev = list(reversed(tokens))
-        vessels.append(Vessel(
-            number=starting_num + i,
-            name=name,
-            original_tokens=tokens,
-            reversed_tokens=rev,
-            resin_mass_g=float(config_defaults.get('fixed_resin_mass_g', 0.1)),
-            substitution_mmol_g=0.3,
-        ))
-    return vessels
-
-
-def _load_materials_map(materials_path: str) -> Dict:
-    """Load residue info from a materials file into a dict."""
-    from spps_assistant.infrastructure.materials_parser import load_materials_file
-    from spps_assistant.domain.models import ResidueInfo
-
-    residue_info_map: Dict = {}
-    try:
-        for rec in load_materials_file(Path(materials_path)):
-            tok = rec['token']
-            residue_info_map[tok] = ResidueInfo(
-                token=tok, base_code=rec['base_code'],
-                protection=rec['protection'], fmoc_mw=rec['fmoc_mw'],
-                free_mw=rec['free_mw'], stock_conc=rec.get('stock_conc', 0.5),
-                density_g_ml=rec.get('density_g_ml'),
-                equivalents_multiplier=rec.get('equivalents_multiplier', 1.0),
-            )
-    except Exception as e:
-        console.print(f"[yellow]Warning: {e}[/yellow]")
-    return residue_info_map
-
 
 
 @click.command('materials')
@@ -93,42 +33,55 @@ def materials(
     Produces both an XLSX and PDF materials list showing the Fmoc-AA to
     weigh and volumes to prepare for the synthesis run.
     """
+    from pathlib import Path
     from spps_assistant.infrastructure.sqlite_repository import SQLiteRepository
     from spps_assistant.infrastructure.yaml_config import YAMLConfigRepository
     from spps_assistant.application.materials import MaterialsUseCase
+    from spps_assistant.application.synthesis_guide import build_config_from_defaults
+    from spps_assistant.application.sequence_loader import (
+        parse_and_validate_sequences, build_vessels, load_materials_map,
+    )
     from spps_assistant.domain.sequence import get_unique_tokens
-    from spps_assistant.domain.models import SynthesisConfig
     from spps_assistant.cli.prompts import prompt_residue_mws, auto_resolve_residues
 
     db = SQLiteRepository()
     config_repo = YAMLConfigRepository()
     config_defaults = config_repo.load()
+    starting_num = int(config_defaults.get('starting_vessel_number', 1))
 
     # Parse sequences
-    starting_num = int(config_defaults.get('starting_vessel_number', 1))
-    vessels = _parse_sequences_to_vessels(input_path, starting_num, config_defaults)
+    console.print(f"\n[bold]Parsing sequences from:[/bold] {input_path}")
+    try:
+        parsed_sequences = parse_and_validate_sequences(Path(input_path))
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        sys.exit(1)
+    console.print(f"  Found [bold]{len(parsed_sequences)}[/bold] sequence(s).")
+
+    fixed_resin_mass_g = float(config_defaults.get('fixed_resin_mass_g', 0.1))
+    vessels = build_vessels(parsed_sequences, starting_num, resin_mass_g=fixed_resin_mass_g)
 
     # Load MW data
-    residue_info_map: Dict = {}
+    residue_info_map = {}
     if materials_path:
-        residue_info_map = _load_materials_map(materials_path)
+        try:
+            residue_info_map = load_materials_map(Path(materials_path))
+        except ValueError as e:
+            console.print(f"[red]{e}[/red]")
+            sys.exit(1)
 
     unique_tokens = get_unique_tokens(vessels)
-
     if not non_interactive:
         residue_info_map = prompt_residue_mws(unique_tokens, db, residue_info_map)
     else:
         residue_info_map = auto_resolve_residues(unique_tokens, db, residue_info_map)
 
-    config = SynthesisConfig(
-        name=config_defaults.get('name', 'MySynthesis'),
-        volume_mode=config_defaults.get('volume_mode', 'stoichiometry'),
-        activator=config_defaults.get('activator', 'HBTU'),
-        base=config_defaults.get('base', 'DIEA'),
-        aa_equivalents=float(config_defaults.get('aa_equivalents', 3.0)),
-        activator_equivalents=float(config_defaults.get('activator_equivalents', 3.0)),
-        base_equivalents=float(config_defaults.get('base_equivalents', 6.0)),
-    )
+    try:
+        config = build_config_from_defaults(config_defaults, output_dir=output_dir,
+                                            starting_num=starting_num)
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        sys.exit(1)
 
     eff_output = output_dir or config_defaults.get('output_directory', 'spps_output')
     use_case = MaterialsUseCase(db=db)

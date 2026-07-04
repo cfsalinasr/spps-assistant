@@ -16,6 +16,8 @@ import threading
 import urllib.request
 from pathlib import Path
 
+from spps_assistant.api.app import AUTH_HEADER
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -70,12 +72,17 @@ def test_sidecar_prints_ready_line_and_serves_health():
         assert ready_line is not None, (
             "sidecar did not print a ready line within 10s; it may have hung on startup"
         )
-        match = re.match(r'SPPS_SIDECAR_READY (\d+)', ready_line)
+        match = re.match(r'SPPS_SIDECAR_READY (\d+) (\S+)', ready_line)
         assert match, f"unexpected first stdout line: {ready_line!r}"
         port = int(match.group(1))
         assert port > 0
+        token = match.group(2)
 
-        with urllib.request.urlopen(f'http://127.0.0.1:{port}/health', timeout=5) as resp:
+        req = urllib.request.Request(
+            f'http://127.0.0.1:{port}/health',
+            headers={AUTH_HEADER: token},
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
             assert resp.status == 200
             body = json.loads(resp.read().decode())
             assert body['ok'] is True

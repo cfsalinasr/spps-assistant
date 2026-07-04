@@ -4,6 +4,7 @@ from typing import Optional
 
 from flask import Flask
 
+from spps_assistant.api.routes.config import config_bp
 from spps_assistant.api.routes.health import health_bp
 from spps_assistant.application.ports import ConfigRepository
 
@@ -25,5 +26,6 @@ def create_app(config_repo: Optional[ConfigRepository] = None) -> Flask:
     app.config['CONFIG_REPO'] = config_repo
 
     app.register_blueprint(health_bp)
+    app.register_blueprint(config_bp)
 
     return app

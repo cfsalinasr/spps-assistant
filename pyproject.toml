@@ -41,3 +41,8 @@ include = ["spps_assistant*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+parallel = true
+source = ["spps_assistant"]
+sigterm = true

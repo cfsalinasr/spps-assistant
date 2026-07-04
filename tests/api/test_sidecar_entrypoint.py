@@ -14,6 +14,9 @@ import subprocess
 import sys
 import threading
 import urllib.request
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _read_line_with_timeout(stream, timeout_seconds):
@@ -37,7 +40,24 @@ def _read_line_with_timeout(stream, timeout_seconds):
 
 
 def test_sidecar_prints_ready_line_and_serves_health():
-    env = {**os.environ, 'SPPS_API_PORT': '0'}
+    # PYTHONPATH (not just cwd) is required for sitecustomize.py at the repo
+    # root to be auto-imported by Python's site initialization: for `python -m`,
+    # the current directory is only added to sys.path *after* site.py has
+    # already attempted (and, without this, silently failed) its own
+    # sitecustomize import. Putting the repo root on PYTHONPATH makes it part
+    # of sys.path early enough for that auto-import to actually find it.
+    existing_pythonpath = os.environ.get('PYTHONPATH', '')
+    pythonpath = (
+        f"{_REPO_ROOT}{os.pathsep}{existing_pythonpath}"
+        if existing_pythonpath
+        else str(_REPO_ROOT)
+    )
+    env = {
+        **os.environ,
+        'SPPS_API_PORT': '0',
+        'COVERAGE_PROCESS_START': str(_REPO_ROOT / 'pyproject.toml'),
+        'PYTHONPATH': pythonpath,
+    }
     proc = subprocess.Popen(
         [sys.executable, '-m', 'spps_assistant.api'],
         stdout=subprocess.PIPE,

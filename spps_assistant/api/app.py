@@ -1,5 +1,6 @@
 """Flask app factory for the SPPS Assistant API sidecar."""
 
+import hmac
 from typing import Optional
 
 from flask import Flask, request
@@ -37,12 +38,11 @@ def create_app(
         from spps_assistant.infrastructure.yaml_config import YAMLConfigRepository
         config_repo = YAMLConfigRepository()
     app.config['CONFIG_REPO'] = config_repo
-    app.config['AUTH_TOKEN'] = auth_token
 
     if auth_token is not None:
         @app.before_request
         def _require_sidecar_token():
-            if request.headers.get(AUTH_HEADER) != auth_token:
+            if not hmac.compare_digest(request.headers.get(AUTH_HEADER, ''), auth_token):
                 return err('unauthorized', 'Missing or invalid sidecar token'), 401
 
     app.register_blueprint(health_bp)

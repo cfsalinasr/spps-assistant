@@ -61,6 +61,9 @@ describe('Dashboard', () => {
     await waitFor(() => {
       expect(screen.getByText(/no active synthes/i)).toBeInTheDocument()
     })
-    expect(screen.getByRole('button', { name: /new synthesis/i })).toBeInTheDocument()
+    // Two "+ New synthesis" buttons are expected by design: one always-visible
+    // in the page header, one contextual inside the empty-state card.
+    const newSynthesisButtons = screen.getAllByRole('button', { name: /new synthesis/i })
+    expect(newSynthesisButtons).toHaveLength(2)
   })
 })

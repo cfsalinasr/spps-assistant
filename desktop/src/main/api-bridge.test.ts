@@ -13,8 +13,16 @@ describe('fetchFromSidecar', () => {
         ok: boolean
         data: Record<string, unknown>
       }
+      // Asserting structure, not an exact value: this test spawns the real
+      // sidecar, which reads the real ~/.spps_assistant/spps_config.yaml on
+      // whatever machine runs it — a value like 'activator' could genuinely
+      // differ between machines/dev histories. What this test needs to prove
+      // is that the real HTTP round-trip (with the auth header) actually
+      // works end-to-end, which a structural check does just as well as an
+      // exact-value check, without being coupled to ambient filesystem state.
       expect(result.ok).toBe(true)
-      expect(result.data.activator).toBe('HBTU')
+      expect(typeof result.data.activator).toBe('string')
+      expect((result.data.activator as string).length).toBeGreaterThan(0)
     } finally {
       stopSidecar(handle)
     }

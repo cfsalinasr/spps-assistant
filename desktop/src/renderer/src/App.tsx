@@ -1,19 +1,25 @@
-// TEMP (Task 2 verification) — replaced by Task 6's real App shell
-import { Button } from './components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
+import Dashboard from './views/Dashboard'
+
+const TABS = ['Dashboard', 'New synthesis', 'Cycle guide', 'Materials', 'Peptide info'] as const
 
 function App(): React.JSX.Element {
   return (
-    <div className="min-h-screen bg-bg p-8">
-      <Card className="bg-bg2 border-[color:var(--border)] max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-text font-sans">Design token check</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-text2 font-mono text-sm mb-4">585.7 g/mol</p>
-          <Button className="bg-teal text-bg hover:bg-teal/90">Primary action</Button>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen bg-bg">
+      <nav className="bg-bg2 border-b border-[color:var(--border)] flex px-2">
+        {TABS.map((tab, index) => (
+          <div
+            key={tab}
+            className={
+              index === 0
+                ? 'text-teal border-b-2 border-teal px-4 py-3 text-xs font-medium'
+                : 'text-text3 px-4 py-3 text-xs font-medium cursor-not-allowed'
+            }
+          >
+            {tab}
+          </div>
+        ))}
+      </nav>
+      <Dashboard />
     </div>
   )
 }

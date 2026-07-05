@@ -1,7 +1,18 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { startSidecar, stopSidecar, type SidecarHandle } from './sidecar'
+import { registerConfigHandlers } from './api-bridge'
+
+let sidecarHandle: SidecarHandle | null = null
+
+function shutdownSidecar(): void {
+  if (sidecarHandle) {
+    stopSidecar(sidecarHandle)
+    sidecarHandle = null
+  }
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -38,7 +49,7 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
@@ -51,6 +62,18 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+
+  // Start the Python API sidecar and wire up the config IPC handlers before
+  // creating the window, so window.spps.getConfig()/setConfig() are ready
+  // as soon as the renderer loads. repoRoot: npm run dev / electron-vite dev
+  // runs with cwd set to desktop/, so going one directory up reaches the
+  // spps-assistant repo root where pyproject.toml lives.
+  const repoRoot = resolve(process.cwd(), '..')
+  sidecarHandle = await startSidecar(repoRoot)
+  registerConfigHandlers(ipcMain, () => {
+    if (!sidecarHandle) throw new Error('Sidecar is not running')
+    return sidecarHandle.info
+  })
 
   createWindow()
 
@@ -65,9 +88,17 @@ app.whenReady().then(() => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
+  shutdownSidecar()
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+// window-all-closed alone doesn't cover macOS quitting the app fully (e.g.
+// Cmd+Q) since darwin keeps running after all windows close — this ensures
+// the sidecar is always stopped when the app actually quits.
+app.on('before-quit', () => {
+  shutdownSidecar()
 })
 
 // In this file you can include the rest of your app's specific main process

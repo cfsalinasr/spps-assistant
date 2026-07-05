@@ -82,6 +82,13 @@ app.whenReady().then(async () => {
     // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+}).catch((error: unknown) => {
+  // If the sidecar fails to start (timeout, spawn error, early exit), fail
+  // loudly and quit rather than leaving an unhandled promise rejection —
+  // there's no usable app without it. A friendlier error dialog can replace
+  // this console message once the app is packaged for non-technical users.
+  console.error('Failed to start SPPS Assistant:', error)
+  app.quit()
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

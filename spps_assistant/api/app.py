@@ -1,7 +1,7 @@
 """Flask app factory for the SPPS Assistant API sidecar."""
 
 import hmac
-from typing import Optional
+from typing import Any, Dict, Optional, Tuple
 
 from flask import Flask, request
 
@@ -41,9 +41,10 @@ def create_app(
 
     if auth_token is not None:
         @app.before_request
-        def _require_sidecar_token():
+        def _require_sidecar_token() -> Optional[Tuple[Dict[str, Any], int]]:
             if not hmac.compare_digest(request.headers.get(AUTH_HEADER, ''), auth_token):
                 return err('unauthorized', 'Missing or invalid sidecar token'), 401
+            return None
 
     app.register_blueprint(health_bp)
     app.register_blueprint(config_bp)

@@ -89,4 +89,23 @@ def test_sidecar_prints_ready_line_and_serves_health():
             assert body['data']['status'] == 'ok'
     finally:
         proc.terminate()
-        proc.wait(timeout=5)
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=5)
+
+
+def test_invalid_port_env_var_exits_cleanly_with_error_message():
+    """A non-numeric SPPS_API_PORT must fail fast with a clear stderr
+    message, not an unhandled ValueError traceback."""
+    env = {**os.environ, 'SPPS_API_PORT': 'not-a-number'}
+    proc = subprocess.run(
+        [sys.executable, '-m', 'spps_assistant.api'],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=10,
+    )
+    assert proc.returncode == 1
+    assert 'Invalid SPPS_API_PORT' in proc.stderr

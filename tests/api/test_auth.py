@@ -1,0 +1,54 @@
+"""Tests for the shared-secret sidecar authentication (X-SPPS-Sidecar-Token)."""
+
+from spps_assistant.api.app import AUTH_HEADER, create_app
+
+
+def test_no_auth_token_configured_allows_requests_without_header():
+    app = create_app()
+    client = app.test_client()
+
+    resp = client.get('/health')
+
+    assert resp.status_code == 200
+
+
+def test_auth_token_configured_rejects_missing_header():
+    app = create_app(auth_token='secret-token')
+    client = app.test_client()
+
+    resp = client.get('/health')
+
+    assert resp.status_code == 401
+    body = resp.get_json()
+    assert body['ok'] is False
+    assert body['error']['code'] == 'unauthorized'
+
+
+def test_auth_token_configured_rejects_wrong_header_value():
+    app = create_app(auth_token='secret-token')
+    client = app.test_client()
+
+    resp = client.get('/health', headers={AUTH_HEADER: 'wrong-value'})
+
+    assert resp.status_code == 401
+
+
+def test_auth_token_configured_allows_correct_header_value():
+    app = create_app(auth_token='secret-token')
+    client = app.test_client()
+
+    resp = client.get('/health', headers={AUTH_HEADER: 'secret-token'})
+
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body['ok'] is True
+
+
+def test_auth_token_configured_also_protects_config_route():
+    """The before_request hook must protect every route, not just /health."""
+    app = create_app(auth_token='secret-token')
+    client = app.test_client()
+
+    resp = client.get('/config')
+
+    assert resp.status_code == 401

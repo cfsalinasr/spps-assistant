@@ -33,9 +33,16 @@ jobs:
         run: |
           python -m pytest tests/ \
             --cov=spps_assistant \
-            --cov-report=xml:coverage.xml \
-            --cov-report=term-missing \
+            --cov-report= \
             -v
+          # pytest-cov already combines its own parallel-mode data files at
+          # session end, so this usually finds nothing left and exits 1 with
+          # "No data to combine" — that's expected, not a real failure; a
+          # genuinely missing/empty .coverage file would still fail loudly
+          # on the next two commands.
+          coverage combine || true
+          coverage report -m
+          coverage xml -o coverage.xml
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4

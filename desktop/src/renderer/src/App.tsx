@@ -1,34 +1,20 @@
-import Versions from './components/Versions'
-import electronLogo from './assets/electron.svg'
+// TEMP (Task 2 verification) — replaced by Task 6's real App shell
+import { Button } from './components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
 
 function App(): React.JSX.Element {
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
-
   return (
-    <>
-      <img alt="logo" className="logo" src={electronLogo} />
-      <div className="creator">Powered by electron-vite</div>
-      <div className="text">
-        Build an Electron app with <span className="react">React</span>
-        &nbsp;and <span className="ts">TypeScript</span>
-      </div>
-      <p className="tip">
-        Please try pressing <code>F12</code> to open the devTool
-      </p>
-      <div className="actions">
-        <div className="action">
-          <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">
-            Documentation
-          </a>
-        </div>
-        <div className="action">
-          <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-            Send IPC
-          </a>
-        </div>
-      </div>
-      <Versions></Versions>
-    </>
+    <div className="min-h-screen bg-bg p-8">
+      <Card className="bg-bg2 border-[color:var(--border)] max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-text font-sans">Design token check</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-text2 font-mono text-sm mb-4">585.7 g/mol</p>
+          <Button className="bg-teal text-bg hover:bg-teal/90">Primary action</Button>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 

@@ -131,5 +131,36 @@ reviews:
         reason. Dev dependencies should remain in the [dev] optional group and not bleed
         into the main dependency list.
 
+    - path: "spps_assistant/api/**"
+      instructions: >
+        This layer must contain no business logic — only request/response marshalling and
+        calls into application/. Flag any stoichiometry, MW, or sequence calculation
+        performed here. All inputs must be validated before being passed to
+        application-layer functions. Flag any use of debug=True in the Flask app (must be
+        off in the frozen sidecar). Verify the server binds only to 127.0.0.1, never 0.0.0.0.
+
+    - path: "desktop/src/main/**"
+      instructions: >
+        Electron main-process code has full OS access — flag any nodeIntegration: true, any
+        disabling of contextIsolation, and any IPC handler that doesn't validate its input
+        before touching the filesystem or spawning a process. The sidecar's port and auth
+        token must never be passed to the renderer directly — only mediated through
+        ipcMain.handle responses that already contain the fetched data, never the raw
+        port/token values themselves.
+
+    - path: "desktop/src/preload/**"
+      instructions: >
+        Preload scripts must only use contextBridge.exposeInMainWorld to expose a narrow,
+        typed API surface — flag any direct exposure of ipcRenderer, remote, or Node built-ins
+        to the renderer. Flag any window.* assignment that isn't guarded by
+        process.contextIsolated matching the existing pattern in this file.
+
+    - path: "desktop/src/renderer/**"
+      instructions: >
+        Renderer code must never import electron, child_process, or any Node built-in
+        directly — only via the typed window.spps preload bridge. Flag any hardcoded
+        127.0.0.1 URL, port number, or auth token/header string in renderer code — all
+        sidecar communication must go through window.spps.*, mediated by the main process.
+
 chat:
   auto_reply: true

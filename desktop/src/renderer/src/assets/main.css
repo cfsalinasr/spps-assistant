@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0f1117;
+  --bg2: #161b25;
+  --bg3: #1e2535;
+  --bg4: #252d3e;
+  --border: rgba(255, 255, 255, 0.08);
+  --border2: rgba(255, 255, 255, 0.14);
+  --teal: #1fc9a0;
+  --teal-dim: rgba(31, 201, 160, 0.12);
+  --amber: #f0b429;
+  --amber-dim: rgba(240, 180, 41, 0.12);
+  --red: #e25c5c;
+  --red-dim: rgba(226, 92, 92, 0.12);
+  --text: #e8eaf0;
+  --text2: #8b92a8;
+  --text3: #5a6178;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  margin: 0;
+}

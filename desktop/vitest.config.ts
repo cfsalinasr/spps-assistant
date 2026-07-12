@@ -16,6 +16,11 @@ export default defineConfig({
     // registers itself against a *global* afterEach (jest-compatible
     // behavior), which vitest only provides when `globals: true`.
     // Without this, DOM from one test's render() leaks into the next.
-    globals: true
+    globals: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      reportsDirectory: './coverage'
+    }
   }
 })

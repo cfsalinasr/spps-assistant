@@ -38,7 +38,7 @@ export default function Dashboard(): React.JSX.Element {
   }, [])
 
   return (
-    <div className="min-h-screen bg-bg p-5">
+    <div className="bg-bg p-5">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-text font-sans text-base font-medium">Dashboard</h1>
         <Button className="bg-teal text-bg hover:bg-teal/90">+ New synthesis</Button>

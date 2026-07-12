@@ -1,8 +1,32 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { resolve } from 'node:path'
-import { startSidecar, stopSidecar } from './sidecar'
+import { startSidecar, stopSidecar, resolvePythonCommand } from './sidecar'
 
 const REPO_ROOT = resolve(__dirname, '../../..')
+
+describe('resolvePythonCommand', () => {
+  it('returns a fixed absolute path when one of the known candidates exists', async () => {
+    vi.resetModules()
+    vi.doMock('node:fs', () => ({
+      existsSync: (path: string) => path === '/usr/local/bin/python3.11'
+    }))
+    const { resolvePythonCommand: resolveWithMock } = await import('./sidecar')
+    expect(resolveWithMock()).toBe('/usr/local/bin/python3.11')
+    vi.doUnmock('node:fs')
+  })
+
+  it('falls back to the bare command name when no fixed candidate exists', async () => {
+    vi.resetModules()
+    vi.doMock('node:fs', () => ({ existsSync: () => false }))
+    const { resolvePythonCommand: resolveWithMock } = await import('./sidecar')
+    expect(resolveWithMock()).toBe('python3.11')
+    vi.doUnmock('node:fs')
+  })
+
+  it('returns some usable python3.11 command on this real machine', () => {
+    expect(resolvePythonCommand().length).toBeGreaterThan(0)
+  })
+})
 
 describe('startSidecar', () => {
   it('spawns the real Python sidecar and resolves with its port and token', async () => {

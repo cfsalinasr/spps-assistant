@@ -1,5 +1,24 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createInterface } from 'node:readline'
+import { existsSync } from 'node:fs'
+
+// Known, fixed installation locations for python3.11 on the platforms this
+// project currently targets (macOS Homebrew, common Linux/CI paths). Spawning
+// by bare command name searches the inherited PATH, which is attacker-
+// writable — preferring one of these fixed, unwriteable-by-a-normal-user
+// paths closes that lookup window. Falls back to the bare command (searched
+// via PATH) only if none of these exist, so non-standard dev installs still
+// work. A later packaging phase will spawn a bundled, frozen executable by a
+// fixed relative path instead, removing this PATH dependency entirely.
+const PYTHON_CANDIDATES = [
+  '/opt/homebrew/bin/python3.11',
+  '/usr/local/bin/python3.11',
+  '/usr/bin/python3.11'
+]
+
+export function resolvePythonCommand(): string {
+  return PYTHON_CANDIDATES.find((path) => existsSync(path)) ?? 'python3.11'
+}
 
 export interface SidecarInfo {
   port: number
@@ -28,7 +47,7 @@ const READY_LINE_PATTERN = /^SPPS_SIDECAR_READY (\d+) (\S+)$/
  */
 export function startSidecar(repoRoot: string, timeoutMs = 10000): Promise<SidecarHandle> {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn('python3.11', ['-m', 'spps_assistant.api'], {
+    const child = spawn(resolvePythonCommand(), ['-m', 'spps_assistant.api'], {
       cwd: repoRoot,
       env: { ...process.env, SPPS_API_PORT: '0' }
     })

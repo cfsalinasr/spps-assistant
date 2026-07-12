@@ -1,5 +1,5 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { join, resolve } from 'path'
+import { join, resolve } from 'node:path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { startSidecar, stopSidecar, type SidecarHandle } from './sidecar'
@@ -49,47 +49,50 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(async () => {
-  // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
+app
+  .whenReady()
+  .then(async () => {
+    // Set app user model id for windows
+    electronApp.setAppUserModelId('com.electron')
 
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
+    // Default open or close DevTools by F12 in development
+    // and ignore CommandOrControl + R in production.
+    // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+    app.on('browser-window-created', (_, window) => {
+      optimizer.watchWindowShortcuts(window)
+    })
+
+    // IPC test
+    ipcMain.on('ping', () => console.log('pong'))
+
+    // Start the Python API sidecar and wire up the config IPC handlers before
+    // creating the window, so window.spps.getConfig()/setConfig() are ready
+    // as soon as the renderer loads. repoRoot: npm run dev / electron-vite dev
+    // runs with cwd set to desktop/, so going one directory up reaches the
+    // spps-assistant repo root where pyproject.toml lives.
+    const repoRoot = resolve(process.cwd(), '..')
+    sidecarHandle = await startSidecar(repoRoot)
+    registerConfigHandlers(ipcMain, () => {
+      if (!sidecarHandle) throw new Error('Sidecar is not running')
+      return sidecarHandle.info
+    })
+
+    createWindow()
+
+    app.on('activate', function () {
+      // On macOS it's common to re-create a window in the app when the
+      // dock icon is clicked and there are no other windows open.
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
   })
-
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
-
-  // Start the Python API sidecar and wire up the config IPC handlers before
-  // creating the window, so window.spps.getConfig()/setConfig() are ready
-  // as soon as the renderer loads. repoRoot: npm run dev / electron-vite dev
-  // runs with cwd set to desktop/, so going one directory up reaches the
-  // spps-assistant repo root where pyproject.toml lives.
-  const repoRoot = resolve(process.cwd(), '..')
-  sidecarHandle = await startSidecar(repoRoot)
-  registerConfigHandlers(ipcMain, () => {
-    if (!sidecarHandle) throw new Error('Sidecar is not running')
-    return sidecarHandle.info
+  .catch((error: unknown) => {
+    // If the sidecar fails to start (timeout, spawn error, early exit), fail
+    // loudly and quit rather than leaving an unhandled promise rejection —
+    // there's no usable app without it. A friendlier error dialog can replace
+    // this console message once the app is packaged for non-technical users.
+    console.error('Failed to start SPPS Assistant:', error)
+    app.quit()
   })
-
-  createWindow()
-
-  app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
-}).catch((error: unknown) => {
-  // If the sidecar fails to start (timeout, spawn error, early exit), fail
-  // loudly and quit rather than leaving an unhandled promise rejection —
-  // there's no usable app without it. A friendlier error dialog can replace
-  // this console message once the app is packaged for non-technical users.
-  console.error('Failed to start SPPS Assistant:', error)
-  app.quit()
-})
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

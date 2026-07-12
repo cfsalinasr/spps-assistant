@@ -1,9 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
-// Custom APIs for renderer
-const api = {}
-
 // SPPS sidecar API — bridges the renderer to the main process's
 // registerConfigHandlers IPC handlers (see src/main/api-bridge.ts).
 const spps = {
@@ -17,7 +14,6 @@ const spps = {
 if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', electronAPI)
-    contextBridge.exposeInMainWorld('api', api)
     contextBridge.exposeInMainWorld('spps', spps)
   } catch (error) {
     console.error(error)
@@ -25,8 +21,6 @@ if (process.contextIsolated) {
 } else {
   // @ts-ignore (define in dts)
   window.electron = electronAPI
-  // @ts-ignore (define in dts)
-  window.api = api
   // @ts-ignore (define in dts)
   window.spps = spps
 }

@@ -54,11 +54,14 @@ jobs:
   frontend:
     name: Desktop (Electron/React) Test & Coverage
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # required for SonarCloud blame data
+          persist-credentials: false
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5

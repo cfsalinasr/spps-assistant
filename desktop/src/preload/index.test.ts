@@ -19,7 +19,7 @@ describe('preload', () => {
     delete (process as unknown as Record<string, unknown>).contextIsolated
   })
 
-  it('exposes electron/api/spps via contextBridge when context isolation is enabled', async () => {
+  it('exposes electron/spps via contextBridge when context isolation is enabled', async () => {
     const exposeInMainWorld = vi.fn()
     vi.doMock('electron', () => ({
       contextBridge: { exposeInMainWorld },
@@ -31,11 +31,11 @@ describe('preload', () => {
     await import('./index')
 
     expect(exposeInMainWorld).toHaveBeenCalledWith('electron', { marker: true })
-    expect(exposeInMainWorld).toHaveBeenCalledWith('api', {})
     expect(exposeInMainWorld).toHaveBeenCalledWith(
       'spps',
       expect.objectContaining({ getConfig: expect.any(Function), setConfig: expect.any(Function) })
     )
+    expect(exposeInMainWorld).not.toHaveBeenCalledWith('api', expect.anything())
   })
 
   it('falls back to assigning window globals when context isolation is disabled', async () => {

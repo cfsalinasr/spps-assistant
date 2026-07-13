@@ -1,10 +1,20 @@
 """Tests for the shared-secret sidecar authentication (X-SPPS-Sidecar-Token)."""
 
+import pytest
+
 from spps_assistant.api.app import AUTH_HEADER, create_app
+from spps_assistant.infrastructure.sqlite_repository import SQLiteRepository
 
 
-def test_no_auth_token_configured_allows_requests_without_header():
-    app = create_app()
+@pytest.fixture
+def db(tmp_path):
+    """Temporary SQLite database for test isolation."""
+    db_path = tmp_path / 'spps_database.db'
+    return SQLiteRepository(db_path)
+
+
+def test_no_auth_token_configured_allows_requests_without_header(db):
+    app = create_app(db=db)
     client = app.test_client()
 
     resp = client.get('/health')
@@ -12,8 +22,8 @@ def test_no_auth_token_configured_allows_requests_without_header():
     assert resp.status_code == 200
 
 
-def test_auth_token_configured_rejects_missing_header():
-    app = create_app(auth_token='secret-token')
+def test_auth_token_configured_rejects_missing_header(db):
+    app = create_app(auth_token='secret-token', db=db)
     client = app.test_client()
 
     resp = client.get('/health')
@@ -24,8 +34,8 @@ def test_auth_token_configured_rejects_missing_header():
     assert body['error']['code'] == 'unauthorized'
 
 
-def test_auth_token_configured_rejects_wrong_header_value():
-    app = create_app(auth_token='secret-token')
+def test_auth_token_configured_rejects_wrong_header_value(db):
+    app = create_app(auth_token='secret-token', db=db)
     client = app.test_client()
 
     resp = client.get('/health', headers={AUTH_HEADER: 'wrong-value'})
@@ -33,8 +43,8 @@ def test_auth_token_configured_rejects_wrong_header_value():
     assert resp.status_code == 401
 
 
-def test_auth_token_configured_allows_correct_header_value():
-    app = create_app(auth_token='secret-token')
+def test_auth_token_configured_allows_correct_header_value(db):
+    app = create_app(auth_token='secret-token', db=db)
     client = app.test_client()
 
     resp = client.get('/health', headers={AUTH_HEADER: 'secret-token'})
@@ -44,9 +54,9 @@ def test_auth_token_configured_allows_correct_header_value():
     assert body['ok'] is True
 
 
-def test_auth_token_configured_also_protects_config_route():
+def test_auth_token_configured_also_protects_config_route(db):
     """The before_request hook must protect every route, not just /health."""
-    app = create_app(auth_token='secret-token')
+    app = create_app(auth_token='secret-token', db=db)
     client = app.test_client()
 
     resp = client.get('/config')

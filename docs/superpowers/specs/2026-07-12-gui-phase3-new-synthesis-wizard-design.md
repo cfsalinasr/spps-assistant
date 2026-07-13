@@ -122,8 +122,14 @@ Request body carries everything accumulated across Steps 1-4:
 ```
 
 Server-side, in order:
-1. `build_config_from_defaults(config_repo.load(), **config_overrides)` to get
-   a `SynthesisConfig`.
+1. `build_config_from_defaults({**config_repo.load(), **config_overrides})` to
+   get a `SynthesisConfig` — `build_config_from_defaults` only accepts 3
+   explicit override kwargs (`volume_mode`, `output_dir`, `starting_num`);
+   every other field (`activator`, `base`, `resin_mass_strategy`, etc.) is
+   read via `.get()` straight from its single dict argument, so merging
+   `config_overrides` over the loaded defaults *before* the call — not
+   passing them as `**kwargs` — is what actually threads every overridden
+   field through correctly.
 2. If `resin_mass_strategy == 'target'`: `apply_target_resin_mass(vessels, config, residue_info_map)`
    to back-calculate each vessel's `resin_mass_g` (mirrors the CLI's target-yield path exactly).
 3. `calc_yields_and_solubility(vessels, residue_info_map)`.

@@ -102,7 +102,23 @@ def test_generate_missing_vessels_returns_400(app):
     assert body['error']['code'] == 'invalid_body'
 
 
-def test_generate_target_yield_strategy_backcalculates_resin_mass(app, tmp_path):
+def test_generate_target_yield_strategy_backcalculates_resin_mass(app, tmp_path, monkeypatch):
+    """Verify apply_target_resin_mass is invoked for non-fixed strategies with target_yield_mg."""
+    from spps_assistant.application.synthesis_guide import apply_target_resin_mass
+
+    # Monkeypatch to track if apply_target_resin_mass was called
+    call_tracker = {'called': False}
+    original_apply = apply_target_resin_mass
+
+    def mock_apply(vessels, config, residue_info_map):
+        call_tracker['called'] = True
+        return original_apply(vessels, config, residue_info_map)
+
+    monkeypatch.setattr(
+        'spps_assistant.application.synthesis_guide.apply_target_resin_mass',
+        mock_apply
+    )
+
     client = app.test_client()
     out_dir = tmp_path / 'output'
 
@@ -112,10 +128,43 @@ def test_generate_target_yield_strategy_backcalculates_resin_mass(app, tmp_path)
         'config_overrides': {
             'name': 'TargetRun',
             'output_directory': str(out_dir),
-            'resin_mass_strategy': 'target',
+            'resin_mass_strategy': 'target_average',
             'target_yield_mg': 50.0,
         },
     })
 
     assert resp.status_code == 200
     assert len(list(out_dir.glob('*.pdf'))) >= 1
+    assert call_tracker['called'], 'apply_target_resin_mass should have been called for non-fixed strategy with target_yield_mg'
+
+
+def test_generate_fixed_strategy_skips_target_resin_mass_calculation(app, tmp_path, monkeypatch):
+    """Verify apply_target_resin_mass is NOT called when resin_mass_strategy == 'fixed'."""
+    # Monkeypatch to track if apply_target_resin_mass was called
+    call_tracker = {'called': False}
+
+    def mock_apply(vessels, config, residue_info_map):
+        call_tracker['called'] = True
+
+    monkeypatch.setattr(
+        'spps_assistant.application.synthesis_guide.apply_target_resin_mass',
+        mock_apply
+    )
+
+    client = app.test_client()
+    out_dir = tmp_path / 'output'
+
+    resp = client.post('/synthesis/generate', json={
+        'vessels': [_vessel_payload(1, 'Pep1', ['A'])],
+        'residue_info_map': {'A': _residue_payload()},
+        'config_overrides': {
+            'name': 'FixedRun',
+            'output_directory': str(out_dir),
+            'resin_mass_strategy': 'fixed',
+            'fixed_resin_mass_g': 0.1,
+        },
+    })
+
+    assert resp.status_code == 200
+    assert len(list(out_dir.glob('*.pdf'))) >= 1
+    assert not call_tracker['called'], 'apply_target_resin_mass should NOT be called for fixed strategy'

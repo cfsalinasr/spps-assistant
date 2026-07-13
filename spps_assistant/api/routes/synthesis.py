@@ -69,7 +69,7 @@ def generate_synthesis():
     except ValueError as exc:
         return err('invalid_config', str(exc)), 400
 
-    if config.resin_mass_strategy == 'target':
+    if config.resin_mass_strategy != 'fixed' and config.target_yield_mg:
         try:
             apply_target_resin_mass(vessels, config, residue_info_map)
         except ValueError as exc:

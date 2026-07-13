@@ -10,6 +10,7 @@ from spps_assistant.api.routes.config import config_bp
 from spps_assistant.api.routes.health import health_bp
 from spps_assistant.api.routes.residues import residues_bp
 from spps_assistant.api.routes.sequences import sequences_bp
+from spps_assistant.api.routes.synthesis import synthesis_bp
 from spps_assistant.application.ports import ConfigRepository, DatabaseRepository
 
 AUTH_HEADER = 'X-SPPS-Sidecar-Token'
@@ -61,5 +62,6 @@ def create_app(
     app.register_blueprint(config_bp)
     app.register_blueprint(sequences_bp)
     app.register_blueprint(residues_bp)
+    app.register_blueprint(synthesis_bp)
 
     return app

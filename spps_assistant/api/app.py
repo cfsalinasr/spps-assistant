@@ -8,6 +8,7 @@ from flask import Flask, request
 from spps_assistant.api.responses import err
 from spps_assistant.api.routes.config import config_bp
 from spps_assistant.api.routes.health import health_bp
+from spps_assistant.api.routes.sequences import sequences_bp
 from spps_assistant.application.ports import ConfigRepository
 
 AUTH_HEADER = 'X-SPPS-Sidecar-Token'
@@ -48,5 +49,6 @@ def create_app(
 
     app.register_blueprint(health_bp)
     app.register_blueprint(config_bp)
+    app.register_blueprint(sequences_bp)
 
     return app

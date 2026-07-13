@@ -78,13 +78,30 @@ converted to a 400 response with the exception message.
 **`GET /residues`** — wraps `SQLiteRepository.list_residues()` directly, no
 transformation needed (already returns a list of dicts).
 
+**Precedence when both a materials file and the DB have a value for the same
+token** (matches the CLI's `prompt_residue_mws` exactly, which checks
+`residue_info_map` — pre-seeded from the materials file — before falling back
+to the DB): materials-file values win; DB values (`GET /residues`) only fill
+in tokens the materials file didn't cover. Step 2's frontend table merges
+`materials_residue_map` (from `/sequences/parse`, if a materials file was
+given) over the `GET /residues` result — materials file entries take
+priority — before rendering the initial editable rows.
+
 **`POST /residues`** — body is a single residue record
 (`{"token", "base_code", "protection", "fmoc_mw", "free_mw", ...}`), wraps
-`SQLiteRepository.save_residue(...)`. Called once per edited/confirmed token
-from the wizard's Step 2 table (batches what the CLI does interactively,
-per-token, into explicit save calls the frontend issues as the user
-confirms each row — no new batching endpoint needed, `Promise.all` over the
-edited rows from the renderer side is sufficient).
+`SQLiteRepository.save_residue(...)`.
+
+**Which rows get persisted back to the DB:** matches the CLI's
+`prompt_residue_mws` exactly, which only calls `save_residue` for tokens it
+had to resolve via DB-lookup-or-prompt — never for tokens already supplied by
+a materials file. So Step 2 calls `POST /residues` only for rows whose value
+came from the DB or was manually entered/edited by the user; rows populated
+from an uploaded materials file are *not* written back to the DB (the
+materials file stays the source of truth for those tokens, matching the
+CLI's behavior — silently promoting a one-off materials-file value into the
+permanent residue library would be a surprising side effect). The frontend
+tracks each row's origin (`'db' | 'materials' | 'manual'`) to know which to
+save on Continue.
 
 ### `routes/synthesis.py`
 
@@ -149,7 +166,8 @@ interface WizardState {
   fastaPath: string | null
   materialsPath: string | null
   vessels: ParsedVessel[]                    // from /sequences/parse
-  residueMap: Record<string, ResidueInfo>    // from /residues + edits
+  residueMap: Record<string, ResidueInfo & { origin: 'db' | 'materials' | 'manual' }>
+                                              // origin drives which rows POST /residues persists on Continue (see §1)
   reagents: {
     deprotectionReagent: string
     activator: string

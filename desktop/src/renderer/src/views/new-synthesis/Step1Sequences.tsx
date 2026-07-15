@@ -29,10 +29,8 @@ function buildResidueMapFromMaterials(
 }
 
 export default function Step1Sequences({ state, dispatch }: Step1Props): React.JSX.Element {
-  const [vessels, setVessels] = useState<typeof state.vessels>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [fastaPath, setFastaPath] = useState<string | null>(state.fastaPath)
 
   async function parseWith(fastaPath: string, materialsPath: string | null): Promise<void> {
     setLoading(true)
@@ -43,8 +41,6 @@ export default function Step1Sequences({ state, dispatch }: Step1Props): React.J
       setError(envelope.error?.message ?? 'Could not parse the FASTA file.')
       return
     }
-    setFastaPath(fastaPath)
-    setVessels(envelope.data.vessels)
     dispatch({
       type: 'SET_SEQUENCES',
       fastaPath,
@@ -62,8 +58,8 @@ export default function Step1Sequences({ state, dispatch }: Step1Props): React.J
 
   async function pickMaterialsFile(): Promise<void> {
     const materialsPath = await window.spps.pickMaterialsFile()
-    if (!materialsPath || !fastaPath) return
-    await parseWith(fastaPath, materialsPath)
+    if (!materialsPath || !state.fastaPath) return
+    await parseWith(state.fastaPath, materialsPath)
   }
 
   return (
@@ -72,9 +68,9 @@ export default function Step1Sequences({ state, dispatch }: Step1Props): React.J
         <CardContent className="py-6">
           <div className="flex gap-3 mb-4">
             <Button onClick={pickAndParseFasta} disabled={loading}>
-              {fastaPath ? 'Change FASTA file' : 'Browse for FASTA file'}
+              {state.fastaPath ? 'Change FASTA file' : 'Browse for FASTA file'}
             </Button>
-            {fastaPath && (
+            {state.fastaPath && (
               <Button onClick={pickMaterialsFile} disabled={loading} className="bg-bg3">
                 {state.materialsPath ? 'Change materials file' : '+ Add materials file (optional)'}
               </Button>
@@ -84,12 +80,12 @@ export default function Step1Sequences({ state, dispatch }: Step1Props): React.J
           {loading && <p className="text-text3 font-sans text-sm">Parsing…</p>}
           {error && <p className="text-red font-sans text-sm">{error}</p>}
 
-          {vessels.length > 0 && (
+          {state.vessels.length > 0 && (
             <div>
               <p className="text-text3 font-mono text-xs mb-2">
-                {fastaPath} — {vessels.length} sequence(s)
+                {state.fastaPath} — {state.vessels.length} sequence(s)
               </p>
-              {vessels.map((vessel) => (
+              {state.vessels.map((vessel) => (
                 <div key={vessel.number} className="mb-2">
                   <p className="text-text3 font-sans text-xs">
                     Vessel {vessel.number} — {vessel.name}
@@ -107,7 +103,7 @@ export default function Step1Sequences({ state, dispatch }: Step1Props): React.J
 
       <div className="flex justify-end">
         <Button
-          disabled={vessels.length === 0}
+          disabled={state.vessels.length === 0}
           onClick={() => dispatch({ type: 'SET_STEP', step: 2 })}
           className="bg-teal text-bg hover:bg-teal/90"
         >

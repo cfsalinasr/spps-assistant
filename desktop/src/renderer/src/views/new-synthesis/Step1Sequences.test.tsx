@@ -8,10 +8,13 @@ import { initialWizardState, wizardReducer, type WizardAction, type WizardState 
 
 function renderStep1(state: WizardState = initialWizardState) {
   let currentState = state
+  const utils = render(<Step1Sequences state={currentState} dispatch={vi.fn()} />)
   const dispatch = vi.fn((action: WizardAction) => {
     currentState = wizardReducer(currentState, action)
+    utils.rerender(<Step1Sequences state={currentState} dispatch={dispatch} />)
   })
-  const utils = render(<Step1Sequences state={currentState} dispatch={dispatch} />)
+  // Re-attach the real dispatch to the component
+  utils.rerender(<Step1Sequences state={currentState} dispatch={dispatch} />)
   return { ...utils, dispatch, getState: () => currentState }
 }
 

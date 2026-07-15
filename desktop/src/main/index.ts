@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { startSidecar, stopSidecar, type SidecarHandle } from './sidecar'
-import { registerConfigHandlers } from './api-bridge'
+import { registerConfigHandlers, registerSynthesisHandlers } from './api-bridge'
 import { registerDialogHandlers } from './dialogs'
 
 let sidecarHandle: SidecarHandle | null = null
@@ -74,6 +74,10 @@ app
     const repoRoot = resolve(process.cwd(), '..')
     sidecarHandle = await startSidecar(repoRoot)
     registerConfigHandlers(ipcMain, () => {
+      if (!sidecarHandle) throw new Error('Sidecar is not running')
+      return sidecarHandle.info
+    })
+    registerSynthesisHandlers(ipcMain, () => {
       if (!sidecarHandle) throw new Error('Sidecar is not running')
       return sidecarHandle.info
     })

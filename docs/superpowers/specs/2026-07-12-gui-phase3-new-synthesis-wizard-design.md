@@ -210,7 +210,7 @@ writes a minimal local marker file, `~/.spps_assistant/last_synthesis.json`
 
 The Dashboard's existing config-loading `useEffect` (in `Dashboard.tsx`) gains
 a second fetch — a new `GET /synthesis/last` route (thin wrapper reading this
-marker file, `{"ok": false, "data": null}` if it doesn't exist yet) — and
+marker file, `{"ok": true, "data": null}` if it doesn't exist yet) — and
 renders its existing empty-state card only when no marker is present;
 otherwise renders a minimal "active synthesis" summary (name, vessel count,
 generated-at) in its place. This is intentionally minimal: richer per-cycle

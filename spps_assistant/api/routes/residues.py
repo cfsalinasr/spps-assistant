@@ -26,12 +26,18 @@ def save_residue():
         return err('invalid_body', 'Request body must include "token"'), 400
 
     try:
+        fmoc_mw = float(body['fmoc_mw'])
+        free_mw = float(body['free_mw'])
+        if fmoc_mw <= 0:
+            raise ValueError('fmoc_mw must be positive')
+        if free_mw <= 0:
+            raise ValueError('free_mw must be positive')
         db.save_residue(
             token=body['token'],
             base_code=body.get('base_code', body['token']),
             protection=body.get('protection', ''),
-            fmoc_mw=float(body['fmoc_mw']),
-            free_mw=float(body['free_mw']),
+            fmoc_mw=fmoc_mw,
+            free_mw=free_mw,
         )
     except (KeyError, TypeError, ValueError) as exc:
         return err('invalid_body', f'Invalid residue record: {exc}'), 400

@@ -3,14 +3,6 @@
 import pytest
 
 from spps_assistant.api.app import AUTH_HEADER, create_app
-from spps_assistant.infrastructure.sqlite_repository import SQLiteRepository
-
-
-@pytest.fixture
-def db(tmp_path):
-    """Temporary SQLite database for test isolation."""
-    db_path = tmp_path / 'spps_database.db'
-    return SQLiteRepository(db_path)
 
 
 def test_no_auth_token_configured_allows_requests_without_header(db):

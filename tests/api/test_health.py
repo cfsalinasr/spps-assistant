@@ -3,16 +3,12 @@
 import pytest
 
 from spps_assistant import __version__
-from spps_assistant.api.app import create_app
-from spps_assistant.infrastructure.sqlite_repository import SQLiteRepository
 
 
 @pytest.fixture
-def app(tmp_path):
+def app(app_with_db):
     """Flask app wired to a throwaway SQLite DB, not the real user database."""
-    db_path = tmp_path / 'spps_database.db'
-    db = SQLiteRepository(db_path)
-    return create_app(db=db)
+    return app_with_db
 
 
 def test_health_returns_ok_envelope_with_status_and_version(app):

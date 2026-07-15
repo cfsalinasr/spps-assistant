@@ -24,6 +24,11 @@ def parse_sequences():
     fasta_path = body['fasta_path']
     materials_path = body.get('materials_path')
 
+    if not isinstance(fasta_path, str):
+        return err('invalid_body', 'fasta_path must be a string'), 400
+    if materials_path is not None and not isinstance(materials_path, str):
+        return err('invalid_body', 'materials_path must be a string'), 400
+
     config_repo = current_app.config['CONFIG_REPO']
     config_defaults = config_repo.load()
     starting_num = int(config_defaults.get('starting_vessel_number', 1))

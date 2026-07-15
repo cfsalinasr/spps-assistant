@@ -2,16 +2,11 @@
 
 import pytest
 
-from spps_assistant.api.app import create_app
-from spps_assistant.infrastructure.sqlite_repository import SQLiteRepository
-
 
 @pytest.fixture
-def app(tmp_path):
+def app(app_with_db):
     """Flask app wired to a throwaway SQLite DB, not the real user database."""
-    db_path = tmp_path / 'spps_database.db'
-    db = SQLiteRepository(db_path)
-    return create_app(db=db)
+    return app_with_db
 
 
 def test_get_residues_returns_empty_list_initially(app):
@@ -70,3 +65,36 @@ def test_post_residue_invalid_mw_returns_400(app):
     resp = client.post('/residues', json={'token': 'A', 'fmoc_mw': 'not-a-number', 'free_mw': 1.0})
 
     assert resp.status_code == 400
+
+
+def test_post_residue_zero_fmoc_mw_returns_400(app):
+    client = app.test_client()
+
+    resp = client.post('/residues', json={'token': 'A', 'fmoc_mw': 0, 'free_mw': 71.08})
+
+    assert resp.status_code == 400
+    body = resp.get_json()
+    assert body['ok'] is False
+    assert body['error']['code'] == 'invalid_body'
+
+
+def test_post_residue_negative_fmoc_mw_returns_400(app):
+    client = app.test_client()
+
+    resp = client.post('/residues', json={'token': 'A', 'fmoc_mw': -5, 'free_mw': 71.08})
+
+    assert resp.status_code == 400
+    body = resp.get_json()
+    assert body['ok'] is False
+    assert body['error']['code'] == 'invalid_body'
+
+
+def test_post_residue_negative_free_mw_returns_400(app):
+    client = app.test_client()
+
+    resp = client.post('/residues', json={'token': 'A', 'fmoc_mw': 311.3, 'free_mw': -1.0})
+
+    assert resp.status_code == 400
+    body = resp.get_json()
+    assert body['ok'] is False
+    assert body['error']['code'] == 'invalid_body'

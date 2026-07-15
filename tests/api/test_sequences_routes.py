@@ -2,10 +2,6 @@
 
 import pytest
 
-from spps_assistant.api.app import create_app
-from spps_assistant.infrastructure.sqlite_repository import SQLiteRepository
-from spps_assistant.infrastructure.yaml_config import YAMLConfigRepository
-
 SIMPLE_FASTA = ">Peptide1\nAGLK\n>Peptide2\nFW\n"
 SIMPLE_CSV = (
     "ResidueCode,ProtectionGroup,FmocMW_g_mol,FreeAA_MW_g_mol,Density_g_mL,Notes\n"
@@ -15,13 +11,9 @@ SIMPLE_CSV = (
 
 
 @pytest.fixture
-def app(tmp_path):
+def app(app_with_config_and_db):
     """Flask app wired to throwaway config/DB, not the real user config or database."""
-    config_path = tmp_path / 'spps_config.yaml'
-    db_path = tmp_path / 'spps_database.db'
-    config_repo = YAMLConfigRepository(config_path)
-    db = SQLiteRepository(db_path)
-    return create_app(config_repo=config_repo, db=db)
+    return app_with_config_and_db
 
 
 @pytest.fixture
@@ -90,3 +82,27 @@ def test_parse_invalid_fasta_file_returns_400(app, tmp_path):
     body = resp.get_json()
     assert body['ok'] is False
     assert body['error']['code'] == 'parse_failed'
+
+
+def test_parse_numeric_fasta_path_returns_400(app):
+    """Test that non-string fasta_path (e.g., a JSON number) returns 400, not 500."""
+    client = app.test_client()
+
+    resp = client.post('/sequences/parse', json={'fasta_path': 123})
+
+    assert resp.status_code == 400
+    body = resp.get_json()
+    assert body['ok'] is False
+    assert body['error']['code'] == 'invalid_body'
+
+
+def test_parse_numeric_materials_path_returns_400(app, fasta_file):
+    """Test that non-string materials_path (e.g., a JSON array) returns 400, not 500."""
+    client = app.test_client()
+
+    resp = client.post('/sequences/parse', json={'fasta_path': str(fasta_file), 'materials_path': [1, 2, 3]})
+
+    assert resp.status_code == 400
+    body = resp.get_json()
+    assert body['ok'] is False
+    assert body['error']['code'] == 'invalid_body'

@@ -1,10 +1,15 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, type RenderResult } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import Step2ResidueMW from './Step2ResidueMW'
-import { initialWizardState, wizardReducer, type WizardAction, type WizardState } from './wizardReducer'
+import {
+  initialWizardState,
+  wizardReducer,
+  type WizardAction,
+  type WizardState
+} from './wizardReducer'
 
 const TWO_VESSEL_STATE: WizardState = {
   ...initialWizardState,
@@ -21,9 +26,13 @@ const TWO_VESSEL_STATE: WizardState = {
   ]
 }
 
-function renderStep2(state: WizardState) {
+function renderStep2(state: WizardState): RenderResult & {
+  dispatch: ReturnType<typeof vi.fn>
+  getState: () => WizardState
+} {
   let currentState = state
-  let utils: any
+  // eslint-disable-next-line prefer-const
+  let utils: RenderResult
   const dispatch = vi.fn((action: WizardAction) => {
     currentState = wizardReducer(currentState, action)
     utils.rerender(<Step2ResidueMW state={currentState} dispatch={dispatch} />)
@@ -60,7 +69,14 @@ describe('Step2ResidueMW', () => {
       ...TWO_VESSEL_STATE,
       materialsPath: '/tmp/mats.csv',
       residueMap: {
-        A: { token: 'A', base_code: 'A', protection: '', fmoc_mw: 999.9, free_mw: 888.8, origin: 'materials' }
+        A: {
+          token: 'A',
+          base_code: 'A',
+          protection: '',
+          fmoc_mw: 999.9,
+          free_mw: 888.8,
+          origin: 'materials'
+        }
       }
     }
     vi.stubGlobal('spps', {
@@ -102,10 +118,44 @@ describe('Step2ResidueMW', () => {
     const user = userEvent.setup()
 
     const { dispatch } = renderStep2(TWO_VESSEL_STATE)
-    await waitFor(() => expect(screen.getByRole('button', { name: /continue/i })).not.toBeDisabled())
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /continue/i })).not.toBeDisabled()
+    )
     await user.click(screen.getByRole('button', { name: /continue/i }))
 
     expect(saveResidue).toHaveBeenCalledTimes(2)
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_STEP', step: 3 })
+  })
+
+  it('does not advance to step 3 if a save fails, and shows an error message', async () => {
+    const saveResidue = vi.fn().mockImplementation((residue) => {
+      if (residue.token === 'G') {
+        return Promise.resolve({
+          ok: false,
+          error: { code: 'db_error', message: 'Database error' }
+        })
+      }
+      return Promise.resolve({ ok: true, data: {} })
+    })
+    vi.stubGlobal('spps', {
+      getResidues: vi.fn().mockResolvedValue({
+        ok: true,
+        data: [
+          { token: 'A', base_code: 'A', protection: '', fmoc_mw: 311.3, free_mw: 71.08 },
+          { token: 'G', base_code: 'G', protection: '', fmoc_mw: 297.3, free_mw: 57.05 }
+        ]
+      }),
+      saveResidue
+    })
+    const user = userEvent.setup()
+
+    const { dispatch } = renderStep2(TWO_VESSEL_STATE)
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /continue/i })).not.toBeDisabled()
+    )
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+
+    await waitFor(() => expect(screen.getByText(/failed to save/i)).toBeInTheDocument())
+    expect(dispatch).not.toHaveBeenCalledWith({ type: 'SET_STEP', step: 3 })
   })
 })

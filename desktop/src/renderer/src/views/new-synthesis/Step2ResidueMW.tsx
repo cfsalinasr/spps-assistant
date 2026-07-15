@@ -17,7 +17,10 @@ function uniqueTokens(state: WizardState): string[] {
   return Array.from(tokens)
 }
 
-export default function Step2ResidueMW({ state, dispatch }: Readonly<Step2Props>): React.JSX.Element {
+export default function Step2ResidueMW({
+  state,
+  dispatch
+}: Readonly<Step2Props>): React.JSX.Element {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -68,7 +71,7 @@ export default function Step2ResidueMW({ state, dispatch }: Readonly<Step2Props>
 
   async function saveEditedResidues(): Promise<void> {
     const toSave = Object.values(state.residueMap).filter((entry) => entry.origin !== 'materials')
-    await Promise.all(
+    const results = await Promise.all(
       toSave.map((entry) =>
         window.spps.saveResidue({
           token: entry.token,
@@ -79,6 +82,12 @@ export default function Step2ResidueMW({ state, dispatch }: Readonly<Step2Props>
         })
       )
     )
+    const allSucceeded = results.every((envelope) => envelope.ok)
+    if (!allSucceeded) {
+      const failedCount = results.filter((e) => !e.ok).length
+      setError(`Failed to save ${failedCount} residue(s). Please try again.`)
+      return
+    }
     dispatch({ type: 'SET_STEP', step: 3 })
   }
 

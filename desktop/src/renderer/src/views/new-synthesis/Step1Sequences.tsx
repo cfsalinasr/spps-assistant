@@ -28,26 +28,38 @@ function buildResidueMapFromMaterials(
   return map
 }
 
-export default function Step1Sequences({ state, dispatch }: Readonly<Step1Props>): React.JSX.Element {
+export default function Step1Sequences({
+  state,
+  dispatch
+}: Readonly<Step1Props>): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function parseWith(fastaPath: string, materialsPath: string | null): Promise<void> {
-    setLoading(true)
-    setError(null)
-    const envelope = await window.spps.parseSequences(fastaPath, materialsPath)
-    setLoading(false)
-    if (!envelope.ok || !envelope.data) {
-      setError(envelope.error?.message ?? 'Could not parse the FASTA file.')
-      return
+    try {
+      setLoading(true)
+      setError(null)
+      const envelope = await window.spps.parseSequences(fastaPath, materialsPath)
+      if (!envelope.ok || !envelope.data) {
+        setError(envelope.error?.message ?? 'Could not parse the FASTA file.')
+        return
+      }
+      dispatch({
+        type: 'SET_SEQUENCES',
+        fastaPath,
+        materialsPath,
+        vessels: envelope.data.vessels,
+        residueMap: buildResidueMapFromMaterials(envelope.data.materials_residue_map)
+      })
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Could not parse the FASTA file. Is the sidecar running?'
+      setError(message)
+    } finally {
+      setLoading(false)
     }
-    dispatch({
-      type: 'SET_SEQUENCES',
-      fastaPath,
-      materialsPath,
-      vessels: envelope.data.vessels,
-      residueMap: buildResidueMapFromMaterials(envelope.data.materials_residue_map)
-    })
   }
 
   async function pickAndParseFasta(): Promise<void> {

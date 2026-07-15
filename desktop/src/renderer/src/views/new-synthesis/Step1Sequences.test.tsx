@@ -1,12 +1,20 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, type RenderResult } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import Step1Sequences from './Step1Sequences'
-import { initialWizardState, wizardReducer, type WizardAction, type WizardState } from './wizardReducer'
+import {
+  initialWizardState,
+  wizardReducer,
+  type WizardAction,
+  type WizardState
+} from './wizardReducer'
 
-function renderStep1(state: WizardState = initialWizardState) {
+function renderStep1(state: WizardState = initialWizardState): RenderResult & {
+  dispatch: ReturnType<typeof vi.fn>
+  getState: () => WizardState
+} {
   let currentState = state
   const utils = render(<Step1Sequences state={currentState} dispatch={vi.fn()} />)
   const dispatch = vi.fn((action: WizardAction) => {
@@ -80,9 +88,7 @@ describe('Step1Sequences', () => {
     renderStep1()
     await user.click(screen.getByRole('button', { name: /browse for fasta file/i }))
 
-    await waitFor(() =>
-      expect(screen.getByText(/could not parse fasta file/i)).toBeInTheDocument()
-    )
+    await waitFor(() => expect(screen.getByText(/could not parse fasta file/i)).toBeInTheDocument())
   })
 
   it('clicking Continue dispatches SET_STEP to 2', async () => {
@@ -109,9 +115,27 @@ describe('Step1Sequences', () => {
 
     const { dispatch } = renderStep1()
     await user.click(screen.getByRole('button', { name: /browse for fasta file/i }))
-    await waitFor(() => expect(screen.getByRole('button', { name: /continue/i })).not.toBeDisabled())
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /continue/i })).not.toBeDisabled()
+    )
     await user.click(screen.getByRole('button', { name: /continue/i }))
 
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_STEP', step: 2 })
+  })
+
+  it('parseSequences rejection shows an error and re-enables the button', async () => {
+    vi.stubGlobal('spps', {
+      pickFastaFile: vi.fn().mockResolvedValue('/tmp/bad.fasta'),
+      pickMaterialsFile: vi.fn(),
+      parseSequences: vi.fn().mockRejectedValue(new Error('sidecar crashed'))
+    })
+    const user = userEvent.setup()
+
+    renderStep1()
+    await user.click(screen.getByRole('button', { name: /browse for fasta file/i }))
+
+    await waitFor(() => expect(screen.getByText(/sidecar crashed/i)).toBeInTheDocument())
+    // The file picker button should be re-enabled (not stuck in loading state)
+    expect(screen.getByRole('button', { name: /browse for fasta file/i })).not.toBeDisabled()
   })
 })

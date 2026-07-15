@@ -9,51 +9,62 @@ interface Step5Props {
   onDone: () => void
 }
 
-export default function Step5Confirm({ state, dispatch, onDone }: Readonly<Step5Props>): React.JSX.Element {
+export default function Step5Confirm({
+  state,
+  dispatch,
+  onDone
+}: Readonly<Step5Props>): React.JSX.Element {
   async function handleGenerate(): Promise<void> {
-    dispatch({ type: 'GENERATE_START' })
+    try {
+      dispatch({ type: 'GENERATE_START' })
 
-    const outputDirectory = state.outputDirectory || (await window.spps.pickOutputDirectory()) || 'spps_output'
+      const outputDirectory =
+        state.outputDirectory || (await window.spps.pickOutputDirectory()) || 'spps_output'
 
-    const envelope = await window.spps.generateSynthesis({
-      vessels: state.vessels.map((v) => ({
-        ...v,
-        resin_mass_g: state.resin.fixedResinMassG,
-        substitution_mmol_g: state.resin.substitutionMmolG
-      })),
-      residue_info_map: Object.fromEntries(
-        Object.entries(state.residueMap).map(([token, entry]) => [
-          token,
-          {
-            token: entry.token,
-            base_code: entry.base_code,
-            protection: entry.protection,
-            fmoc_mw: entry.fmoc_mw,
-            free_mw: entry.free_mw
-          }
-        ])
-      ),
-      config_overrides: {
-        name: state.synthesisName,
-        deprotection_reagent: state.reagents.deprotectionReagent,
-        activator: state.reagents.activator,
-        use_oxyma: state.reagents.useOxyma,
-        base: state.reagents.base,
-        volume_mode: state.reagents.volumeMode,
-        include_bb_test: state.reagents.completenessTest === 'bromophenol',
-        include_kaiser_test: state.reagents.completenessTest === 'kaiser',
-        resin_mass_strategy: state.resin.strategy,
-        fixed_resin_mass_g: state.resin.fixedResinMassG,
-        target_yield_mg: state.resin.targetYieldMg,
-        output_directory: outputDirectory
+      const envelope = await window.spps.generateSynthesis({
+        vessels: state.vessels.map((v) => ({
+          ...v,
+          resin_mass_g: state.resin.fixedResinMassG,
+          substitution_mmol_g: state.resin.substitutionMmolG
+        })),
+        residue_info_map: Object.fromEntries(
+          Object.entries(state.residueMap).map(([token, entry]) => [
+            token,
+            {
+              token: entry.token,
+              base_code: entry.base_code,
+              protection: entry.protection,
+              fmoc_mw: entry.fmoc_mw,
+              free_mw: entry.free_mw
+            }
+          ])
+        ),
+        config_overrides: {
+          name: state.synthesisName,
+          deprotection_reagent: state.reagents.deprotectionReagent,
+          activator: state.reagents.activator,
+          use_oxyma: state.reagents.useOxyma,
+          base: state.reagents.base,
+          volume_mode: state.reagents.volumeMode,
+          include_bb_test: state.reagents.completenessTest === 'bromophenol',
+          include_kaiser_test: state.reagents.completenessTest === 'kaiser',
+          resin_mass_strategy: state.resin.strategy,
+          fixed_resin_mass_g: state.resin.fixedResinMassG,
+          target_yield_mg: state.resin.targetYieldMg,
+          output_directory: outputDirectory
+        }
+      })
+
+      if (!envelope.ok || !envelope.data) {
+        dispatch({ type: 'GENERATE_ERROR', error: envelope.error?.message ?? 'Generation failed.' })
+        return
       }
-    })
-
-    if (!envelope.ok || !envelope.data) {
-      dispatch({ type: 'GENERATE_ERROR', error: envelope.error?.message ?? 'Generation failed.' })
-      return
+      dispatch({ type: 'GENERATE_SUCCESS', paths: envelope.data })
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Generation failed. Is the sidecar running?'
+      dispatch({ type: 'GENERATE_ERROR', error: message })
     }
-    dispatch({ type: 'GENERATE_SUCCESS', paths: envelope.data })
   }
 
   if (state.generateResult.status === 'success') {
@@ -89,7 +100,10 @@ export default function Step5Confirm({ state, dispatch, onDone }: Readonly<Step5
       <Card className="bg-bg2 mb-4">
         <CardContent className="py-6">
           <div className="mb-4">
-            <label htmlFor="synthesis-name-input" className="text-text3 font-sans text-xs uppercase tracking-wide mb-1 block">
+            <label
+              htmlFor="synthesis-name-input"
+              className="text-text3 font-sans text-xs uppercase tracking-wide mb-1 block"
+            >
               Synthesis name
             </label>
             <input
@@ -102,21 +116,28 @@ export default function Step5Confirm({ state, dispatch, onDone }: Readonly<Step5
 
           <dl className="grid grid-cols-2 gap-3">
             <div>
-              <dt className="text-text3 font-sans text-xs uppercase tracking-wide mb-1">Sequences</dt>
+              <dt className="text-text3 font-sans text-xs uppercase tracking-wide mb-1">
+                Sequences
+              </dt>
               <dd className="text-text font-mono text-sm">
                 {state.vessels.length} vessel(s) ({state.fastaPath})
               </dd>
             </div>
             <div>
-              <dt className="text-text3 font-sans text-xs uppercase tracking-wide mb-1">Residue MW</dt>
+              <dt className="text-text3 font-sans text-xs uppercase tracking-wide mb-1">
+                Residue MW
+              </dt>
               <dd className="text-text font-mono text-sm">
                 {Object.keys(state.residueMap).length} unique token(s) confirmed
               </dd>
             </div>
             <div>
-              <dt className="text-text3 font-sans text-xs uppercase tracking-wide mb-1">Reagents</dt>
+              <dt className="text-text3 font-sans text-xs uppercase tracking-wide mb-1">
+                Reagents
+              </dt>
               <dd className="text-text font-mono text-sm">
-                {state.reagents.activator} / {state.reagents.base} / {state.reagents.deprotectionReagent}
+                {state.reagents.activator} / {state.reagents.base} /{' '}
+                {state.reagents.deprotectionReagent}
               </dd>
             </div>
             <div>
@@ -129,8 +150,12 @@ export default function Step5Confirm({ state, dispatch, onDone }: Readonly<Step5
               </dd>
             </div>
             <div>
-              <dt className="text-text3 font-sans text-xs uppercase tracking-wide mb-1">Output directory</dt>
-              <dd className="text-text font-mono text-sm">{state.outputDirectory || '(choose on generate)'}</dd>
+              <dt className="text-text3 font-sans text-xs uppercase tracking-wide mb-1">
+                Output directory
+              </dt>
+              <dd className="text-text font-mono text-sm">
+                {state.outputDirectory || '(choose on generate)'}
+              </dd>
             </div>
           </dl>
 

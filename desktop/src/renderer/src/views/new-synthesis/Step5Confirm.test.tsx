@@ -1,10 +1,15 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, type RenderResult } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import Step5Confirm from './Step5Confirm'
-import { initialWizardState, wizardReducer, type WizardAction, type WizardState } from './wizardReducer'
+import {
+  initialWizardState,
+  wizardReducer,
+  type WizardAction,
+  type WizardState
+} from './wizardReducer'
 
 const READY_STATE: WizardState = {
   ...initialWizardState,
@@ -25,10 +30,20 @@ const READY_STATE: WizardState = {
   }
 }
 
-function renderStep5(state: WizardState, onDone = vi.fn()) {
+function renderStep5(
+  state: WizardState,
+  onDone = vi.fn()
+): Omit<RenderResult, 'rerender'> & {
+  dispatch: ReturnType<typeof vi.fn>
+  onDone: ReturnType<typeof vi.fn>
+  rerender: (ui: React.ReactElement) => void
+  getState: () => WizardState
+} {
   let currentState = state
   const dispatch = vi.fn()
-  const { rerender, ...utils } = render(<Step5Confirm state={currentState} dispatch={dispatch} onDone={onDone} />)
+  const { rerender, ...utils } = render(
+    <Step5Confirm state={currentState} dispatch={dispatch} onDone={onDone} />
+  )
 
   dispatch.mockImplementation((action: WizardAction) => {
     currentState = wizardReducer(currentState, action)
@@ -44,7 +59,11 @@ describe('Step5Confirm', () => {
   })
 
   it('shows a raw-selection summary of Steps 1-4', () => {
-    vi.stubGlobal('spps', { generateSynthesis: vi.fn(), pickOutputDirectory: vi.fn(), openFolder: vi.fn() })
+    vi.stubGlobal('spps', {
+      generateSynthesis: vi.fn(),
+      pickOutputDirectory: vi.fn(),
+      openFolder: vi.fn()
+    })
 
     renderStep5(READY_STATE)
 
@@ -115,9 +134,24 @@ describe('Step5Confirm', () => {
 
     renderStep5(READY_STATE)
     await user.click(screen.getByRole('button', { name: /generate/i }))
-    await waitFor(() => expect(screen.getByRole('button', { name: /open folder/i })).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /open folder/i })).toBeInTheDocument()
+    )
     await user.click(screen.getByRole('button', { name: /open folder/i }))
 
     expect(openFolder).toHaveBeenCalledWith('/tmp/output/Test_cycle_guide.pdf')
+  })
+
+  it('shows an error if generateSynthesis rejects with an exception', async () => {
+    const generateSynthesis = vi.fn().mockRejectedValue(new Error('sidecar crashed'))
+    vi.stubGlobal('spps', { generateSynthesis, pickOutputDirectory: vi.fn(), openFolder: vi.fn() })
+    const user = userEvent.setup()
+
+    renderStep5(READY_STATE)
+    await user.click(screen.getByRole('button', { name: /generate/i }))
+
+    await waitFor(() => expect(screen.getByText(/sidecar crashed/i)).toBeInTheDocument())
+    // Generate button should be re-enabled
+    expect(screen.getByRole('button', { name: /generate/i })).not.toBeDisabled()
   })
 })

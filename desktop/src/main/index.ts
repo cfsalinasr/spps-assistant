@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { startSidecar, stopSidecar, type SidecarHandle } from './sidecar'
 import { registerConfigHandlers } from './api-bridge'
+import { registerDialogHandlers } from './dialogs'
 
 let sidecarHandle: SidecarHandle | null = null
 
@@ -76,6 +77,7 @@ app
       if (!sidecarHandle) throw new Error('Sidecar is not running')
       return sidecarHandle.info
     })
+    registerDialogHandlers(ipcMain)
 
     createWindow()
 

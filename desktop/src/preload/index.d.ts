@@ -13,6 +13,10 @@ export interface SppsEnvelope {
 export interface SppsApi {
   getConfig: () => Promise<SppsEnvelope>
   setConfig: (data: Record<string, unknown>) => Promise<SppsEnvelope>
+  pickFastaFile: () => Promise<string | null>
+  pickMaterialsFile: () => Promise<string | null>
+  pickOutputDirectory: () => Promise<string | null>
+  openFolder: (path: string) => Promise<void>
 }
 
 declare global {

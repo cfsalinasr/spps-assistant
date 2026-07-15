@@ -274,3 +274,41 @@ def test_corrupted_marker_file_returns_500(app, tmp_path, monkeypatch):
     body = resp.get_json()
     assert body['ok'] is False
     assert body['error']['code'] == 'marker_read_failed'
+
+
+def test_generate_marker_write_failure_returns_200(app, tmp_path, monkeypatch):
+    """Test that if marker write fails, synthesis still returns 200 (not 500),
+    since the real output files were successfully generated."""
+    import os
+    import spps_assistant.api.routes.synthesis as synthesis_module
+
+    client = app.test_client()
+    out_dir = tmp_path / 'output'
+
+    # Monkeypatch os.replace to raise OSError, simulating a marker write failure
+    original_replace = os.replace
+    def failing_replace(src, dst):
+        if 'last_synthesis' in str(dst):
+            raise OSError('Simulated marker write failure')
+        return original_replace(src, dst)
+
+    monkeypatch.setattr('os.replace', failing_replace)
+
+    resp = client.post('/synthesis/generate', json={
+        'vessels': [_vessel_payload(1, 'Pep1', ['A'])],
+        'residue_info_map': {'A': _residue_payload()},
+        'config_overrides': {
+            'name': 'TestRun',
+            'output_directory': str(out_dir),
+            'resin_mass_strategy': 'fixed',
+            'fixed_resin_mass_g': 0.1,
+        },
+    })
+
+    # Despite marker write failure, the response should still be 200 with ok: true
+    # because the actual synthesis output was generated successfully
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body['ok'] is True
+    assert 'data' in body
+    assert len(body['data']) > 0  # output_paths should be present

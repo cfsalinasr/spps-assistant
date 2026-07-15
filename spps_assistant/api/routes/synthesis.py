@@ -2,6 +2,8 @@
 
 import json
 import logging
+import os
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -110,12 +112,32 @@ def generate_synthesis():
         return err('generate_failed', 'Synthesis generation failed. Check server logs for details.'), 500
 
     _MARKER_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _MARKER_PATH.write_text(json.dumps({
+    marker_data = {
         'name': config.name,
         'output_directory': config.output_directory,
         'generated_at': datetime.now(timezone.utc).isoformat(),
         'vessel_count': len(vessels),
-    }), encoding='utf-8')
+    }
+
+    try:
+        # Write atomically: temp file in the same directory, then rename.
+        # This prevents partial/corrupted marker files on write interruption.
+        with tempfile.NamedTemporaryFile(
+            mode='w',
+            dir=_MARKER_PATH.parent,
+            delete=False,
+            encoding='utf-8',
+            suffix='.tmp',
+        ) as tmp_file:
+            json.dump(marker_data, tmp_file)
+            tmp_path = tmp_file.name
+
+        os.replace(tmp_path, _MARKER_PATH)
+    except OSError as exc:
+        # Marker write failed, but synthesis generation succeeded.
+        # Log the failure server-side but return success to client
+        # since the real output files were genuinely created.
+        logger.exception('Failed to write synthesis marker file')
 
     return ok(output_paths)
 

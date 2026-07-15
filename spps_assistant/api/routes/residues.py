@@ -1,5 +1,6 @@
 """Residue MW library routes — Step 2 of the New Synthesis wizard."""
 
+import math
 from dataclasses import asdict
 
 from flask import Blueprint, current_app, request
@@ -28,14 +29,27 @@ def save_residue():
     try:
         fmoc_mw = float(body['fmoc_mw'])
         free_mw = float(body['free_mw'])
-        if fmoc_mw <= 0:
-            raise ValueError('fmoc_mw must be positive')
-        if free_mw <= 0:
-            raise ValueError('free_mw must be positive')
+        if not math.isfinite(fmoc_mw) or fmoc_mw <= 0:
+            raise ValueError('fmoc_mw must be a positive finite number')
+        if not math.isfinite(free_mw) or free_mw <= 0:
+            raise ValueError('free_mw must be a positive finite number')
+
+        token = body['token']
+        if not isinstance(token, str):
+            raise ValueError('token must be a string')
+
+        base_code = body.get('base_code', token)
+        if not isinstance(base_code, str):
+            raise ValueError('base_code must be a string')
+
+        protection = body.get('protection', '')
+        if not isinstance(protection, str):
+            raise ValueError('protection must be a string')
+
         db.save_residue(
-            token=body['token'],
-            base_code=body.get('base_code', body['token']),
-            protection=body.get('protection', ''),
+            token=token,
+            base_code=base_code,
+            protection=protection,
             fmoc_mw=fmoc_mw,
             free_mw=free_mw,
         )

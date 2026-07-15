@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { Dispatch } from 'react'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent } from '../../components/ui/card'
@@ -11,10 +10,7 @@ interface Step5Props {
 }
 
 export default function Step5Confirm({ state, dispatch, onDone }: Step5Props): React.JSX.Element {
-  const [name, setName] = useState(state.synthesisName)
-
   async function handleGenerate(): Promise<void> {
-    dispatch({ type: 'SET_SYNTHESIS_NAME', name })
     dispatch({ type: 'GENERATE_START' })
 
     const outputDirectory = state.outputDirectory || (await window.spps.pickOutputDirectory()) || 'spps_output'
@@ -38,7 +34,7 @@ export default function Step5Confirm({ state, dispatch, onDone }: Step5Props): R
         ])
       ),
       config_overrides: {
-        name,
+        name: state.synthesisName,
         deprotection_reagent: state.reagents.deprotectionReagent,
         activator: state.reagents.activator,
         use_oxyma: state.reagents.useOxyma,
@@ -99,8 +95,8 @@ export default function Step5Confirm({ state, dispatch, onDone }: Step5Props): R
             <input
               id="synthesis-name-input"
               className="bg-bg3 text-text font-sans text-sm px-2 py-1 w-64"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={state.synthesisName}
+              onChange={(e) => dispatch({ type: 'SET_SYNTHESIS_NAME', name: e.target.value })}
             />
           </div>
 

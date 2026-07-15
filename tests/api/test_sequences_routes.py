@@ -3,6 +3,7 @@
 import pytest
 
 from spps_assistant.api.app import create_app
+from spps_assistant.infrastructure.sqlite_repository import SQLiteRepository
 from spps_assistant.infrastructure.yaml_config import YAMLConfigRepository
 
 SIMPLE_FASTA = ">Peptide1\nAGLK\n>Peptide2\nFW\n"
@@ -15,10 +16,12 @@ SIMPLE_CSV = (
 
 @pytest.fixture
 def app(tmp_path):
-    """Flask app wired to a throwaway YAML config file, not the real user config."""
+    """Flask app wired to throwaway config/DB, not the real user config or database."""
     config_path = tmp_path / 'spps_config.yaml'
-    repo = YAMLConfigRepository(config_path)
-    return create_app(config_repo=repo)
+    db_path = tmp_path / 'spps_database.db'
+    config_repo = YAMLConfigRepository(config_path)
+    db = SQLiteRepository(db_path)
+    return create_app(config_repo=config_repo, db=db)
 
 
 @pytest.fixture

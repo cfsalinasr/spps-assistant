@@ -37,7 +37,9 @@ function App(): React.JSX.Element {
           )
         })}
       </nav>
-      {activeTab === 'Dashboard' && <Dashboard onNewSynthesis={() => setActiveTab('New synthesis')} />}
+      {activeTab === 'Dashboard' && (
+        <Dashboard onNewSynthesis={() => setActiveTab('New synthesis')} />
+      )}
       {activeTab === 'New synthesis' && <NewSynthesis onDone={() => setActiveTab('Dashboard')} />}
     </div>
   )

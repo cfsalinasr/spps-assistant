@@ -36,7 +36,9 @@ describe('App', () => {
       expect(tab.className).toContain('cursor-not-allowed')
     }
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
+    )
   })
 
   it('clicking the New synthesis tab switches to the wizard', async () => {
@@ -44,7 +46,9 @@ describe('App', () => {
     const user = userEvent.setup()
 
     render(<App />)
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
+    )
 
     await user.click(screen.getByText('New synthesis'))
 

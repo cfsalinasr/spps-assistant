@@ -14,7 +14,8 @@ const spps = {
   parseSequences: (fastaPath: string, materialsPath: string | null) =>
     ipcRenderer.invoke('spps:parseSequences', fastaPath, materialsPath),
   getResidues: () => ipcRenderer.invoke('spps:getResidues'),
-  saveResidue: (residue: Record<string, unknown>) => ipcRenderer.invoke('spps:saveResidue', residue),
+  saveResidue: (residue: Record<string, unknown>) =>
+    ipcRenderer.invoke('spps:saveResidue', residue),
   generateSynthesis: (payload: Record<string, unknown>) =>
     ipcRenderer.invoke('spps:generateSynthesis', payload),
   getLastSynthesis: () => ipcRenderer.invoke('spps:getLastSynthesis')

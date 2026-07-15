@@ -1,18 +1,32 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, type RenderResult } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import Step3Reagents from './Step3Reagents'
-import { initialWizardState, wizardReducer, type WizardAction, type WizardState } from './wizardReducer'
+import {
+  initialWizardState,
+  wizardReducer,
+  type WizardAction,
+  type WizardState
+} from './wizardReducer'
 
-function renderStep3(state: WizardState = initialWizardState) {
+function renderStep3(state: WizardState = initialWizardState): RenderResult & {
+  dispatch: ReturnType<typeof vi.fn>
+  getState: () => WizardState
+  rerenderWithLatest: () => WizardState
+} {
   let currentState = state
   const dispatch = vi.fn((action: WizardAction) => {
     currentState = wizardReducer(currentState, action)
   })
   const utils = render(<Step3Reagents state={currentState} dispatch={dispatch} />)
-  return { ...utils, dispatch, getState: () => currentState, rerenderWithLatest: () => currentState }
+  return {
+    ...utils,
+    dispatch,
+    getState: () => currentState,
+    rerenderWithLatest: () => currentState
+  }
 }
 
 describe('Step3Reagents', () => {

@@ -17,7 +17,9 @@ export default function Step4Resin({ state, dispatch }: Readonly<Step4Props>): R
   return (
     <div>
       <div className="mb-4">
-        <p className="text-text3 font-sans text-xs uppercase tracking-wide mb-2">Resin mass strategy</p>
+        <p className="text-text3 font-sans text-xs uppercase tracking-wide mb-2">
+          Resin mass strategy
+        </p>
         <Pill
           active={resin.strategy === 'fixed'}
           onClick={() => dispatch({ type: 'SET_RESIN', resin: { strategy: 'fixed' } })}
@@ -33,7 +35,10 @@ export default function Step4Resin({ state, dispatch }: Readonly<Step4Props>): R
       </div>
 
       <div className="mb-4">
-        <label htmlFor="substitution-input" className="text-text3 font-sans text-xs uppercase tracking-wide mb-1 block">
+        <label
+          htmlFor="substitution-input"
+          className="text-text3 font-sans text-xs uppercase tracking-wide mb-1 block"
+        >
           Substitution value (mmol/g)
         </label>
         <input
@@ -50,7 +55,10 @@ export default function Step4Resin({ state, dispatch }: Readonly<Step4Props>): R
 
       {resin.strategy === 'fixed' ? (
         <div className="mb-4">
-          <label htmlFor="fixed-mass-input" className="text-text3 font-sans text-xs uppercase tracking-wide mb-1 block">
+          <label
+            htmlFor="fixed-mass-input"
+            className="text-text3 font-sans text-xs uppercase tracking-wide mb-1 block"
+          >
             Resin mass per vessel (g)
           </label>
           <input
@@ -66,7 +74,10 @@ export default function Step4Resin({ state, dispatch }: Readonly<Step4Props>): R
         </div>
       ) : (
         <div className="mb-4">
-          <label htmlFor="target-yield-input" className="text-text3 font-sans text-xs uppercase tracking-wide mb-1 block">
+          <label
+            htmlFor="target-yield-input"
+            className="text-text3 font-sans text-xs uppercase tracking-wide mb-1 block"
+          >
             Target yield (mg)
           </label>
           <input

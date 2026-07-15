@@ -9,7 +9,14 @@ describe('wizardReducer', () => {
 
   it('SET_SEQUENCES stores parsed vessels and the seeded residue map', () => {
     const residueMap: Record<string, ResidueMwEntry> = {
-      A: { token: 'A', base_code: 'A', protection: '', fmoc_mw: 311.3, free_mw: 71.08, origin: 'materials' }
+      A: {
+        token: 'A',
+        base_code: 'A',
+        protection: '',
+        fmoc_mw: 311.3,
+        free_mw: 71.08,
+        origin: 'materials'
+      }
     }
     const next = wizardReducer(initialWizardState, {
       type: 'SET_SEQUENCES',
@@ -35,8 +42,22 @@ describe('wizardReducer', () => {
 
   it('SET_RESIDUE_MAP replaces the whole residue map', () => {
     const residueMap: Record<string, ResidueMwEntry> = {
-      A: { token: 'A', base_code: 'A', protection: '', fmoc_mw: 311.3, free_mw: 71.08, origin: 'db' },
-      G: { token: 'G', base_code: 'G', protection: '', fmoc_mw: 297.3, free_mw: 57.05, origin: 'db' }
+      A: {
+        token: 'A',
+        base_code: 'A',
+        protection: '',
+        fmoc_mw: 311.3,
+        free_mw: 71.08,
+        origin: 'db'
+      },
+      G: {
+        token: 'G',
+        base_code: 'G',
+        protection: '',
+        fmoc_mw: 297.3,
+        free_mw: 57.05,
+        origin: 'db'
+      }
     }
     const next = wizardReducer(initialWizardState, { type: 'SET_RESIDUE_MAP', residueMap })
     expect(next.residueMap).toEqual(residueMap)
@@ -46,13 +67,27 @@ describe('wizardReducer', () => {
     const withOne = wizardReducer(initialWizardState, {
       type: 'SET_RESIDUE_MAP',
       residueMap: {
-        A: { token: 'A', base_code: 'A', protection: '', fmoc_mw: 311.3, free_mw: 71.08, origin: 'db' }
+        A: {
+          token: 'A',
+          base_code: 'A',
+          protection: '',
+          fmoc_mw: 311.3,
+          free_mw: 71.08,
+          origin: 'db'
+        }
       }
     })
     const next = wizardReducer(withOne, {
       type: 'SET_RESIDUE',
       token: 'G',
-      entry: { token: 'G', base_code: 'G', protection: '', fmoc_mw: 297.3, free_mw: 57.05, origin: 'manual' }
+      entry: {
+        token: 'G',
+        base_code: 'G',
+        protection: '',
+        fmoc_mw: 297.3,
+        free_mw: 57.05,
+        origin: 'manual'
+      }
     })
     expect(Object.keys(next.residueMap)).toEqual(['A', 'G'])
     expect(next.residueMap.G.origin).toBe('manual')
@@ -101,7 +136,10 @@ describe('wizardReducer', () => {
       type: 'GENERATE_SUCCESS',
       paths: { cycle_guide_pdf: '/out/x.pdf' }
     })
-    expect(next.generateResult).toEqual({ status: 'success', paths: { cycle_guide_pdf: '/out/x.pdf' } })
+    expect(next.generateResult).toEqual({
+      status: 'success',
+      paths: { cycle_guide_pdf: '/out/x.pdf' }
+    })
   })
 
   it('GENERATE_ERROR sets status to error with a message', () => {

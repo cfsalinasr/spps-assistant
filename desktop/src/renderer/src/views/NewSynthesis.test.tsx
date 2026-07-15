@@ -55,10 +55,14 @@ describe('NewSynthesis wizard', () => {
     render(<NewSynthesis onDone={onDone} />)
 
     await user.click(screen.getByRole('button', { name: /browse for fasta file/i }))
-    await waitFor(() => expect(screen.getByRole('button', { name: /continue/i })).not.toBeDisabled())
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /continue/i })).not.toBeDisabled()
+    )
     await user.click(screen.getByRole('button', { name: /continue/i }))
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /continue/i })).not.toBeDisabled())
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /continue/i })).not.toBeDisabled()
+    )
     await user.click(screen.getByRole('button', { name: /continue/i }))
 
     await user.click(screen.getByRole('button', { name: /continue/i }))

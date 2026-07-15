@@ -1,12 +1,19 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, type RenderResult } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import Step4Resin from './Step4Resin'
-import { initialWizardState, wizardReducer, type WizardAction, type WizardState } from './wizardReducer'
+import {
+  initialWizardState,
+  wizardReducer,
+  type WizardAction,
+  type WizardState
+} from './wizardReducer'
 
-function renderStep4(state: WizardState = initialWizardState) {
+function renderStep4(state: WizardState = initialWizardState): RenderResult & {
+  dispatch: ReturnType<typeof vi.fn>
+} {
   let currentState = state
   const dispatch = vi.fn((action: WizardAction) => {
     currentState = wizardReducer(currentState, action)

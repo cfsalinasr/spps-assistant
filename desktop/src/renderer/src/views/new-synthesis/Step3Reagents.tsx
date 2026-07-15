@@ -11,7 +11,10 @@ interface Step3Props {
 const DEPROTECTION_OPTIONS = ['Piperidine 20%', 'Piperazine 20%']
 const ACTIVATOR_OPTIONS = ['HBTU', 'TBTU', 'HCTU', 'DIC', 'DCC']
 const BASE_OPTIONS_STANDARD = ['DIEA', 'Pyridine']
-const COMPLETENESS_TEST_OPTIONS: Array<{ value: WizardState['reagents']['completenessTest']; label: string }> = [
+const COMPLETENESS_TEST_OPTIONS: Array<{
+  value: WizardState['reagents']['completenessTest']
+  label: string
+}> = [
   { value: 'bromophenol', label: 'Bromophenol Blue' },
   { value: 'kaiser', label: 'Kaiser / Ninhydrin' },
   { value: 'none', label: 'None' }
@@ -27,7 +30,10 @@ function getNextBaseForActivator(activator: string, currentBase: string): string
   return currentBase
 }
 
-export default function Step3Reagents({ state, dispatch }: Readonly<Step3Props>): React.JSX.Element {
+export default function Step3Reagents({
+  state,
+  dispatch
+}: Readonly<Step3Props>): React.JSX.Element {
   const { reagents } = state
   const isDicOrDcc = reagents.activator === 'DIC' || reagents.activator === 'DCC'
   const baseOptions = isDicOrDcc ? ['None (DIC/DCC)'] : BASE_OPTIONS_STANDARD
@@ -40,12 +46,16 @@ export default function Step3Reagents({ state, dispatch }: Readonly<Step3Props>)
   return (
     <div>
       <div className="mb-4">
-        <p className="text-text3 font-sans text-xs uppercase tracking-wide mb-2">Deprotection reagent</p>
+        <p className="text-text3 font-sans text-xs uppercase tracking-wide mb-2">
+          Deprotection reagent
+        </p>
         {DEPROTECTION_OPTIONS.map((option) => (
           <Pill
             key={option}
             active={reagents.deprotectionReagent === option}
-            onClick={() => dispatch({ type: 'SET_REAGENTS', reagents: { deprotectionReagent: option } })}
+            onClick={() =>
+              dispatch({ type: 'SET_REAGENTS', reagents: { deprotectionReagent: option } })
+            }
           >
             {option}
           </Pill>
@@ -53,9 +63,15 @@ export default function Step3Reagents({ state, dispatch }: Readonly<Step3Props>)
       </div>
 
       <div className="mb-4">
-        <p className="text-text3 font-sans text-xs uppercase tracking-wide mb-2">Coupling activator</p>
+        <p className="text-text3 font-sans text-xs uppercase tracking-wide mb-2">
+          Coupling activator
+        </p>
         {ACTIVATOR_OPTIONS.map((option) => (
-          <Pill key={option} active={reagents.activator === option} onClick={() => setActivator(option)}>
+          <Pill
+            key={option}
+            active={reagents.activator === option}
+            onClick={() => setActivator(option)}
+          >
             {option}
           </Pill>
         ))}
@@ -92,7 +108,9 @@ export default function Step3Reagents({ state, dispatch }: Readonly<Step3Props>)
         <p className="text-text3 font-sans text-xs uppercase tracking-wide mb-2">Volume mode</p>
         <Pill
           active={reagents.volumeMode === 'stoichiometry'}
-          onClick={() => dispatch({ type: 'SET_REAGENTS', reagents: { volumeMode: 'stoichiometry' } })}
+          onClick={() =>
+            dispatch({ type: 'SET_REAGENTS', reagents: { volumeMode: 'stoichiometry' } })
+          }
         >
           Stoichiometry-based
         </Pill>
@@ -105,12 +123,16 @@ export default function Step3Reagents({ state, dispatch }: Readonly<Step3Props>)
       </div>
 
       <div className="mb-4">
-        <p className="text-text3 font-sans text-xs uppercase tracking-wide mb-2">Coupling completeness test</p>
+        <p className="text-text3 font-sans text-xs uppercase tracking-wide mb-2">
+          Coupling completeness test
+        </p>
         {COMPLETENESS_TEST_OPTIONS.map(({ value, label }) => (
           <Pill
             key={value}
             active={reagents.completenessTest === value}
-            onClick={() => dispatch({ type: 'SET_REAGENTS', reagents: { completenessTest: value } })}
+            onClick={() =>
+              dispatch({ type: 'SET_REAGENTS', reagents: { completenessTest: value } })
+            }
           >
             {label}
           </Pill>

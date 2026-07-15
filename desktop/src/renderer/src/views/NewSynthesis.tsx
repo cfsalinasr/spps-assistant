@@ -37,7 +37,9 @@ export default function NewSynthesis({ onDone }: Readonly<NewSynthesisProps>): R
     <div className="bg-bg p-5">
       <div className="mb-5">
         <h1 className="text-text font-sans text-base font-medium">New synthesis</h1>
-        <p className="text-text3 font-sans text-xs">Configure parameters before generating guides</p>
+        <p className="text-text3 font-sans text-xs">
+          Configure parameters before generating guides
+        </p>
       </div>
 
       <div className="flex mb-5">
@@ -45,10 +47,7 @@ export default function NewSynthesis({ onDone }: Readonly<NewSynthesisProps>): R
           const stepNum = (index + 1) as 1 | 2 | 3 | 4 | 5
           const status = getStepStatus(stepNum, state.step)
           return (
-            <div
-              key={label}
-              className={getStepClassName(status)}
-            >
+            <div key={label} className={getStepClassName(status)}>
               <span className="font-mono block">{String(stepNum).padStart(2, '0')}</span>
               {label}
             </div>

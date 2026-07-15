@@ -115,14 +115,18 @@ export default function Dashboard({ onNewSynthesis }: Readonly<DashboardProps>):
 
       <Card className="bg-bg2">
         <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-          {lastSynthesis.status === 'active' ? (
+          {lastSynthesis.status === 'loading' && (
+            <p className="text-text3 font-sans text-sm">Loading…</p>
+          )}
+          {lastSynthesis.status === 'active' && (
             <>
               <p className="text-text font-sans text-sm mb-1">{lastSynthesis.name}</p>
               <p className="text-text3 font-mono text-xs">
                 {lastSynthesis.vesselCount} vessel(s) — generated {lastSynthesis.generatedAt}
               </p>
             </>
-          ) : (
+          )}
+          {lastSynthesis.status === 'none' && (
             <>
               <p className="text-text2 font-sans text-sm mb-4">No active syntheses</p>
               <Button onClick={onNewSynthesis} className="bg-teal text-bg hover:bg-teal/90">

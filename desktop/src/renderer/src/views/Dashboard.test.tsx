@@ -38,7 +38,7 @@ describe('Dashboard', () => {
 
     render(<Dashboard onNewSynthesis={() => {}} />)
 
-    expect(screen.getByText(/loading/i)).toBeInTheDocument()
+    expect(screen.getByText(/loading configuration/i)).toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByText('HBTU')).toBeInTheDocument()
@@ -49,7 +49,10 @@ describe('Dashboard', () => {
   })
 
   it('shows an error state if the sidecar call fails', async () => {
-    vi.stubGlobal('spps', baseStub({ getConfig: () => Promise.reject(new Error('sidecar unreachable')) }))
+    vi.stubGlobal(
+      'spps',
+      baseStub({ getConfig: () => Promise.reject(new Error('sidecar unreachable')) })
+    )
 
     render(<Dashboard onNewSynthesis={() => {}} />)
 
@@ -99,5 +102,18 @@ describe('Dashboard', () => {
       expect(screen.getByText('BatchA')).toBeInTheDocument()
     })
     expect(screen.queryByText(/no active synthes/i)).not.toBeInTheDocument()
+  })
+
+  it('shows a loading state for the last synthesis card on initial mount', () => {
+    vi.stubGlobal(
+      'spps',
+      baseStub({
+        getConfig: () => Promise.resolve({ ok: true, data: { activator: 'HBTU' } })
+      })
+    )
+
+    render(<Dashboard onNewSynthesis={() => {}} />)
+
+    expect(screen.getByText(/loading…/i)).toBeInTheDocument()
   })
 })

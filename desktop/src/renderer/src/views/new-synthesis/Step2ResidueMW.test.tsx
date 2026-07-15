@@ -23,10 +23,12 @@ const TWO_VESSEL_STATE: WizardState = {
 
 function renderStep2(state: WizardState) {
   let currentState = state
+  let utils: any
   const dispatch = vi.fn((action: WizardAction) => {
     currentState = wizardReducer(currentState, action)
+    utils.rerender(<Step2ResidueMW state={currentState} dispatch={dispatch} />)
   })
-  const utils = render(<Step2ResidueMW state={currentState} dispatch={dispatch} />)
+  utils = render(<Step2ResidueMW state={currentState} dispatch={dispatch} />)
   return { ...utils, dispatch, getState: () => currentState }
 }
 
@@ -47,7 +49,7 @@ describe('Step2ResidueMW', () => {
       saveResidue: vi.fn()
     })
 
-    render(<Step2ResidueMW state={TWO_VESSEL_STATE} dispatch={vi.fn()} />)
+    renderStep2(TWO_VESSEL_STATE)
 
     await waitFor(() => expect(screen.getByDisplayValue('311.3')).toBeInTheDocument())
     expect(screen.getByDisplayValue('297.3')).toBeInTheDocument()
@@ -69,7 +71,7 @@ describe('Step2ResidueMW', () => {
       saveResidue: vi.fn()
     })
 
-    render(<Step2ResidueMW state={stateWithMaterialsToken} dispatch={vi.fn()} />)
+    renderStep2(stateWithMaterialsToken)
 
     await waitFor(() => expect(screen.getByDisplayValue('999.9')).toBeInTheDocument())
   })

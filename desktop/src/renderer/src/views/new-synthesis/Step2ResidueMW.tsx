@@ -20,11 +20,6 @@ function uniqueTokens(state: WizardState): string[] {
 export default function Step2ResidueMW({ state, dispatch }: Step2Props): React.JSX.Element {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [residueMapLocal, setResidueMapLocal] = useState(state.residueMap)
-
-  useEffect(() => {
-    setResidueMapLocal(state.residueMap)
-  }, [state.residueMap])
 
   useEffect(() => {
     let cancelled = false
@@ -46,7 +41,6 @@ export default function Step2ResidueMW({ state, dispatch }: Step2Props): React.J
             ? { ...fromDb, origin: 'db' }
             : { token, base_code: token, protection: '', fmoc_mw: 0, free_mw: 0, origin: 'manual' }
         }
-        setResidueMapLocal(merged)
         dispatch({ type: 'SET_RESIDUE_MAP', residueMap: merged })
         setLoading(false)
       })
@@ -63,9 +57,8 @@ export default function Step2ResidueMW({ state, dispatch }: Step2Props): React.J
   }, [])
 
   function updateEntry(token: string, patch: Partial<ResidueMwEntry>): void {
-    const current = residueMapLocal[token]
+    const current = state.residueMap[token]
     const updated: ResidueMwEntry = { ...current, ...patch, token, origin: 'manual' }
-    setResidueMapLocal((prev) => ({ ...prev, [token]: updated }))
     dispatch({
       type: 'SET_RESIDUE',
       token,
@@ -74,7 +67,7 @@ export default function Step2ResidueMW({ state, dispatch }: Step2Props): React.J
   }
 
   async function saveEditedResidues(): Promise<void> {
-    const toSave = Object.values(residueMapLocal).filter((entry) => entry.origin !== 'materials')
+    const toSave = Object.values(state.residueMap).filter((entry) => entry.origin !== 'materials')
     await Promise.all(
       toSave.map((entry) =>
         window.spps.saveResidue({
@@ -93,7 +86,7 @@ export default function Step2ResidueMW({ state, dispatch }: Step2Props): React.J
   const allFilled =
     tokens.length > 0 &&
     tokens.every((token) => {
-      const entry = residueMapLocal[token]
+      const entry = state.residueMap[token]
       return entry && entry.fmoc_mw > 0 && entry.free_mw > 0
     })
 
@@ -105,7 +98,7 @@ export default function Step2ResidueMW({ state, dispatch }: Step2Props): React.J
           {error && <p className="text-red font-sans text-sm">{error}</p>}
           {!loading &&
             tokens.map((token) => {
-              const entry = residueMapLocal[token]
+              const entry = state.residueMap[token]
               return (
                 <div key={token} className="flex items-center gap-3 mb-2">
                   <span className="text-text font-mono text-sm w-16">{token}</span>

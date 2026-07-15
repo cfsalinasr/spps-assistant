@@ -59,4 +59,14 @@ describe('registerDialogHandlers', () => {
     ipcMainHandlers['spps:openFolder'](null, '/tmp/out/file.pdf')
     expect(showItemInFolderMock).toHaveBeenCalledWith('/tmp/out/file.pdf')
   })
+
+  it('spps:openFolder does not call shell.showItemInFolder with a non-string argument', () => {
+    ipcMainHandlers['spps:openFolder'](null, 123)
+    expect(showItemInFolderMock).not.toHaveBeenCalled()
+  })
+
+  it('spps:openFolder does not call shell.showItemInFolder with an empty string', () => {
+    ipcMainHandlers['spps:openFolder'](null, '')
+    expect(showItemInFolderMock).not.toHaveBeenCalled()
+  })
 })

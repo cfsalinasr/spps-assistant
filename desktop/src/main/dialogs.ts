@@ -31,6 +31,10 @@ export function registerDialogHandlers(ipcMain: IpcMain): void {
   })
 
   ipcMain.handle('spps:openFolder', (_event, folderPath: string) => {
+    if (typeof folderPath !== 'string' || folderPath.length === 0) {
+      console.warn('spps:openFolder received invalid path:', folderPath)
+      return
+    }
     shell.showItemInFolder(folderPath)
   })
 }

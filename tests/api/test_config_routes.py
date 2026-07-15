@@ -2,16 +2,11 @@
 
 import pytest
 
-from spps_assistant.api.app import create_app
-from spps_assistant.infrastructure.yaml_config import YAMLConfigRepository
-
 
 @pytest.fixture
-def app(tmp_path):
-    """Flask app wired to a throwaway YAML config file, not the real user config."""
-    config_path = tmp_path / 'spps_config.yaml'
-    repo = YAMLConfigRepository(config_path)
-    return create_app(config_repo=repo)
+def app(app_with_config_and_db):
+    """Flask app wired to throwaway config/DB, not the real user config or database."""
+    return app_with_config_and_db
 
 
 def test_get_config_returns_defaults(app):

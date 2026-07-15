@@ -6,6 +6,11 @@ import type { SppsConfig } from '../../../preload/index.d'
 type LoadState =
   { status: 'loading' } | { status: 'error' } | { status: 'loaded'; config: SppsConfig }
 
+type LastSynthesisState =
+  | { status: 'loading' }
+  | { status: 'none' }
+  | { status: 'active'; name: string; vesselCount: number; generatedAt: string }
+
 const CONFIG_FIELDS: Array<{ key: string; label: string }> = [
   { key: 'activator', label: 'Activator' },
   { key: 'base', label: 'Base' },
@@ -14,8 +19,13 @@ const CONFIG_FIELDS: Array<{ key: string; label: string }> = [
   { key: 'vessel_method', label: 'Vessel method' }
 ]
 
-export default function Dashboard(): React.JSX.Element {
+interface DashboardProps {
+  onNewSynthesis: () => void
+}
+
+export default function Dashboard({ onNewSynthesis }: Readonly<DashboardProps>): React.JSX.Element {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
+  const [lastSynthesis, setLastSynthesis] = useState<LastSynthesisState>({ status: 'loading' })
 
   useEffect(() => {
     let cancelled = false
@@ -37,11 +47,38 @@ export default function Dashboard(): React.JSX.Element {
     }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    window.spps
+      .getLastSynthesis()
+      .then((envelope) => {
+        if (cancelled) return
+        if (envelope.ok && envelope.data) {
+          setLastSynthesis({
+            status: 'active',
+            name: envelope.data.name,
+            vesselCount: envelope.data.vessel_count,
+            generatedAt: envelope.data.generated_at
+          })
+        } else {
+          setLastSynthesis({ status: 'none' })
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLastSynthesis({ status: 'none' })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
     <div className="bg-bg p-5">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-text font-sans text-base font-medium">Dashboard</h1>
-        <Button className="bg-teal text-bg hover:bg-teal/90">+ New synthesis</Button>
+        <Button onClick={onNewSynthesis} className="bg-teal text-bg hover:bg-teal/90">
+          + New synthesis
+        </Button>
       </div>
 
       <Card className="bg-bg2 mb-4">
@@ -78,8 +115,25 @@ export default function Dashboard(): React.JSX.Element {
 
       <Card className="bg-bg2">
         <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-          <p className="text-text2 font-sans text-sm mb-4">No active syntheses</p>
-          <Button className="bg-teal text-bg hover:bg-teal/90">+ New synthesis</Button>
+          {lastSynthesis.status === 'loading' && (
+            <p className="text-text3 font-sans text-sm">Loading…</p>
+          )}
+          {lastSynthesis.status === 'active' && (
+            <>
+              <p className="text-text font-sans text-sm mb-1">{lastSynthesis.name}</p>
+              <p className="text-text3 font-mono text-xs">
+                {lastSynthesis.vesselCount} vessel(s) — generated {lastSynthesis.generatedAt}
+              </p>
+            </>
+          )}
+          {lastSynthesis.status === 'none' && (
+            <>
+              <p className="text-text2 font-sans text-sm mb-4">No active syntheses</p>
+              <Button onClick={onNewSynthesis} className="bg-teal text-bg hover:bg-teal/90">
+                + New synthesis
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -3,13 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const startSidecarMock = vi.fn()
 const stopSidecarMock = vi.fn()
 const registerConfigHandlersMock = vi.fn()
+const registerSynthesisHandlersMock = vi.fn()
 
 vi.mock('./sidecar', () => ({
   startSidecar: (...args: unknown[]) => startSidecarMock(...args),
   stopSidecar: (...args: unknown[]) => stopSidecarMock(...args)
 }))
 vi.mock('./api-bridge', () => ({
-  registerConfigHandlers: (...args: unknown[]) => registerConfigHandlersMock(...args)
+  registerConfigHandlers: (...args: unknown[]) => registerConfigHandlersMock(...args),
+  registerSynthesisHandlers: (...args: unknown[]) => registerSynthesisHandlersMock(...args)
 }))
 vi.mock('../../resources/icon.png?asset', () => ({ default: 'icon.png' }))
 const isMock = { dev: false }
@@ -103,6 +105,7 @@ describe('main/index bootstrap', () => {
     startSidecarMock.mockReset()
     stopSidecarMock.mockReset()
     registerConfigHandlersMock.mockReset()
+    registerSynthesisHandlersMock.mockReset()
     shellMock.openExternal.mockReset()
     ipcMainMock.on.mockReset()
     ipcMainMock.handle.mockReset()

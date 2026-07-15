@@ -8,7 +8,10 @@ from flask import Flask, request
 from spps_assistant.api.responses import err
 from spps_assistant.api.routes.config import config_bp
 from spps_assistant.api.routes.health import health_bp
-from spps_assistant.application.ports import ConfigRepository
+from spps_assistant.api.routes.residues import residues_bp
+from spps_assistant.api.routes.sequences import sequences_bp
+from spps_assistant.api.routes.synthesis import synthesis_bp
+from spps_assistant.application.ports import ConfigRepository, DatabaseRepository
 
 AUTH_HEADER = 'X-SPPS-Sidecar-Token'
 
@@ -16,6 +19,7 @@ AUTH_HEADER = 'X-SPPS-Sidecar-Token'
 def create_app(
     config_repo: Optional[ConfigRepository] = None,
     auth_token: Optional[str] = None,
+    db: Optional[DatabaseRepository] = None,
 ) -> Flask:
     """Build and configure the Flask application.
 
@@ -31,6 +35,9 @@ def create_app(
             always passes a randomly generated token, so every real
             deployment is protected — only direct create_app() usage is
             open by default.
+        db: DatabaseRepository implementation to use for /residues and
+            /synthesis routes. Defaults to a real SQLiteRepository
+            (constructed lazily, same reasoning as config_repo).
     """
     app = Flask(__name__)
 
@@ -38,6 +45,11 @@ def create_app(
         from spps_assistant.infrastructure.yaml_config import YAMLConfigRepository
         config_repo = YAMLConfigRepository()
     app.config['CONFIG_REPO'] = config_repo
+
+    if db is None:
+        from spps_assistant.infrastructure.sqlite_repository import SQLiteRepository
+        db = SQLiteRepository()
+    app.config['DB_REPO'] = db
 
     if auth_token is not None:
         @app.before_request
@@ -48,5 +60,8 @@ def create_app(
 
     app.register_blueprint(health_bp)
     app.register_blueprint(config_bp)
+    app.register_blueprint(sequences_bp)
+    app.register_blueprint(residues_bp)
+    app.register_blueprint(synthesis_bp)
 
     return app

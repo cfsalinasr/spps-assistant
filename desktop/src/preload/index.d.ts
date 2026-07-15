@@ -47,7 +47,13 @@ export interface GenerateEnvelope {
 
 export interface LastSynthesisEnvelope {
   ok: boolean
-  data: { name: string; output_directory: string; generated_at: string; vessel_count: number } | null
+  data?: {
+    name: string
+    output_directory: string
+    generated_at: string
+    vessel_count: number
+  } | null
+  error?: { code: string; message: string }
 }
 
 export interface SppsApi {
@@ -57,7 +63,10 @@ export interface SppsApi {
   pickMaterialsFile: () => Promise<string | null>
   pickOutputDirectory: () => Promise<string | null>
   openFolder: (path: string) => Promise<void>
-  parseSequences: (fastaPath: string, materialsPath: string | null) => Promise<ParseSequencesEnvelope>
+  parseSequences: (
+    fastaPath: string,
+    materialsPath: string | null
+  ) => Promise<ParseSequencesEnvelope>
   getResidues: () => Promise<ResiduesEnvelope>
   saveResidue: (residue: ResidueRecord) => Promise<SppsEnvelope>
   generateSynthesis: (payload: {

@@ -1,34 +1,11 @@
 import type { Dispatch } from 'react'
 import { Button } from '../../components/ui/button'
+import { Pill } from './Pill'
 import type { WizardAction, WizardState } from './wizardReducer'
 
 interface Step4Props {
   state: WizardState
   dispatch: Dispatch<WizardAction>
-}
-
-function StrategyPill({
-  active,
-  onClick,
-  children
-}: {
-  active: boolean
-  onClick: () => void
-  children: string
-}): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={
-        active
-          ? 'bg-teal-dim text-teal border border-teal px-3 py-1.5 rounded text-xs font-medium mr-2'
-          : 'bg-bg3 text-text3 border border-transparent px-3 py-1.5 rounded text-xs font-medium mr-2'
-      }
-    >
-      {children}
-    </button>
-  )
 }
 
 export default function Step4Resin({ state, dispatch }: Step4Props): React.JSX.Element {
@@ -41,18 +18,18 @@ export default function Step4Resin({ state, dispatch }: Step4Props): React.JSX.E
     <div>
       <div className="mb-4">
         <p className="text-text3 font-sans text-xs uppercase tracking-wide mb-2">Resin mass strategy</p>
-        <StrategyPill
+        <Pill
           active={resin.strategy === 'fixed'}
           onClick={() => dispatch({ type: 'SET_RESIN', resin: { strategy: 'fixed' } })}
         >
           Fixed mass
-        </StrategyPill>
-        <StrategyPill
+        </Pill>
+        <Pill
           active={resin.strategy === 'target'}
           onClick={() => dispatch({ type: 'SET_RESIN', resin: { strategy: 'target' } })}
         >
           Target yield
-        </StrategyPill>
+        </Pill>
       </div>
 
       <div className="mb-4">

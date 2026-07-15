@@ -1,5 +1,6 @@
-import type { Dispatch, ReactNode } from 'react'
+import type { Dispatch } from 'react'
 import { Button } from '../../components/ui/button'
+import { Pill } from './Pill'
 import type { WizardAction, WizardState } from './wizardReducer'
 
 interface Step3Props {
@@ -15,30 +16,6 @@ const COMPLETENESS_TEST_OPTIONS: Array<{ value: WizardState['reagents']['complet
   { value: 'kaiser', label: 'Kaiser / Ninhydrin' },
   { value: 'none', label: 'None' }
 ]
-
-function Pill({
-  active,
-  onClick,
-  children
-}: {
-  active: boolean
-  onClick: () => void
-  children: ReactNode
-}): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={
-        active
-          ? 'bg-teal-dim text-teal border border-teal px-3 py-1.5 rounded text-xs font-medium mr-2 mb-2'
-          : 'bg-bg3 text-text3 border border-transparent px-3 py-1.5 rounded text-xs font-medium mr-2 mb-2'
-      }
-    >
-      {children}
-    </button>
-  )
-}
 
 export default function Step3Reagents({ state, dispatch }: Step3Props): React.JSX.Element {
   const { reagents } = state

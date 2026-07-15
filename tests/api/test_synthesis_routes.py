@@ -89,6 +89,37 @@ def test_generate_missing_vessels_returns_400(app):
     assert body['error']['code'] == 'invalid_body'
 
 
+def test_generate_null_residue_info_map_returns_400(app):
+    """Test that residue_info_map: null returns 400, not an unhandled 500."""
+    client = app.test_client()
+
+    resp = client.post('/synthesis/generate', json={
+        'vessels': [_vessel_payload(1, 'Pep1', ['A'])],
+        'residue_info_map': None,
+    })
+
+    assert resp.status_code == 400
+    body = resp.get_json()
+    assert body['ok'] is False
+    assert body['error']['code'] == 'invalid_body'
+
+
+def test_generate_list_config_overrides_returns_400(app):
+    """Test that config_overrides: [] returns 400, not an unhandled 500."""
+    client = app.test_client()
+
+    resp = client.post('/synthesis/generate', json={
+        'vessels': [_vessel_payload(1, 'Pep1', ['A'])],
+        'residue_info_map': {'A': _residue_payload()},
+        'config_overrides': [],
+    })
+
+    assert resp.status_code == 400
+    body = resp.get_json()
+    assert body['ok'] is False
+    assert body['error']['code'] == 'invalid_body'
+
+
 def test_generate_zero_resin_mass_returns_400(app, tmp_path):
     """Test that a vessel with resin_mass_g: 0 returns 400, not a corrupted synthesis."""
     client = app.test_client()

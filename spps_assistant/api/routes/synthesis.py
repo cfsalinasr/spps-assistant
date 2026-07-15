@@ -70,18 +70,22 @@ def generate_synthesis():
     if not isinstance(body, dict) or not body.get('vessels'):
         return err('invalid_body', 'Request body must include "vessels"'), 400
 
+    residue_info_payload = body.get('residue_info_map', {})
+    config_overrides = body.get('config_overrides', {})
+    if not isinstance(residue_info_payload, dict) or not isinstance(config_overrides, dict):
+        return err('invalid_body', 'residue_info_map and config_overrides must be objects'), 400
+
     try:
         vessels = [_vessel_from_dict(v) for v in body['vessels']]
         residue_info_map = {
             token: _residue_info_from_dict(token, data)
-            for token, data in body.get('residue_info_map', {}).items()
+            for token, data in residue_info_payload.items()
         }
     except (KeyError, TypeError, ValueError) as exc:
         return err('invalid_body', f'Invalid vessel or residue data: {exc}'), 400
 
     config_repo = current_app.config['CONFIG_REPO']
     db = current_app.config['DB_REPO']
-    config_overrides = body.get('config_overrides', {})
     merged_defaults = {**config_repo.load(), **config_overrides}
 
     try:

@@ -17,18 +17,23 @@ const COMPLETENESS_TEST_OPTIONS: Array<{ value: WizardState['reagents']['complet
   { value: 'none', label: 'None' }
 ]
 
-export default function Step3Reagents({ state, dispatch }: Step3Props): React.JSX.Element {
+function getNextBaseForActivator(activator: string, currentBase: string): string {
+  if (activator === 'DIC' || activator === 'DCC') {
+    return 'None (DIC/DCC)'
+  }
+  if (currentBase === 'None (DIC/DCC)') {
+    return 'DIEA'
+  }
+  return currentBase
+}
+
+export default function Step3Reagents({ state, dispatch }: Readonly<Step3Props>): React.JSX.Element {
   const { reagents } = state
   const isDicOrDcc = reagents.activator === 'DIC' || reagents.activator === 'DCC'
   const baseOptions = isDicOrDcc ? ['None (DIC/DCC)'] : BASE_OPTIONS_STANDARD
 
   function setActivator(activator: string): void {
-    const forcesNoBase = activator === 'DIC' || activator === 'DCC'
-    const nextBase = forcesNoBase
-      ? 'None (DIC/DCC)'
-      : reagents.base === 'None (DIC/DCC)'
-        ? 'DIEA'
-        : reagents.base
+    const nextBase = getNextBaseForActivator(activator, reagents.base)
     dispatch({ type: 'SET_REAGENTS', reagents: { activator, base: nextBase } })
   }
 

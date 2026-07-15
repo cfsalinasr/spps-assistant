@@ -17,7 +17,7 @@ function uniqueTokens(state: WizardState): string[] {
   return Array.from(tokens)
 }
 
-export default function Step2ResidueMW({ state, dispatch }: Step2Props): React.JSX.Element {
+export default function Step2ResidueMW({ state, dispatch }: Readonly<Step2Props>): React.JSX.Element {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 

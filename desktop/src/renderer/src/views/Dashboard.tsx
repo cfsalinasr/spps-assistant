@@ -23,7 +23,7 @@ interface DashboardProps {
   onNewSynthesis: () => void
 }
 
-export default function Dashboard({ onNewSynthesis }: DashboardProps): React.JSX.Element {
+export default function Dashboard({ onNewSynthesis }: Readonly<DashboardProps>): React.JSX.Element {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [lastSynthesis, setLastSynthesis] = useState<LastSynthesisState>({ status: 'loading' })
 

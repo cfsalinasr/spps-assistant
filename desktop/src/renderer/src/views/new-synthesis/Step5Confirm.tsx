@@ -9,7 +9,7 @@ interface Step5Props {
   onDone: () => void
 }
 
-export default function Step5Confirm({ state, dispatch, onDone }: Step5Props): React.JSX.Element {
+export default function Step5Confirm({ state, dispatch, onDone }: Readonly<Step5Props>): React.JSX.Element {
   async function handleGenerate(): Promise<void> {
     dispatch({ type: 'GENERATE_START' })
 

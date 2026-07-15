@@ -28,7 +28,7 @@ function buildResidueMapFromMaterials(
   return map
 }
 
-export default function Step1Sequences({ state, dispatch }: Step1Props): React.JSX.Element {
+export default function Step1Sequences({ state, dispatch }: Readonly<Step1Props>): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 

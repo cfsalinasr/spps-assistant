@@ -6,7 +6,7 @@ interface PillProps {
   children: ReactNode
 }
 
-export function Pill({ active, onClick, children }: PillProps): React.JSX.Element {
+export function Pill({ active, onClick, children }: Readonly<PillProps>): React.JSX.Element {
   return (
     <button
       type="button"

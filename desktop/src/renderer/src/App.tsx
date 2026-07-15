@@ -5,6 +5,16 @@ import NewSynthesis from './views/NewSynthesis'
 const TABS = ['Dashboard', 'New synthesis', 'Cycle guide', 'Materials', 'Peptide info'] as const
 type Tab = (typeof TABS)[number]
 
+function getTabClassName(active: boolean, enabled: boolean): string {
+  if (active) {
+    return 'text-teal border-b-2 border-teal px-4 py-3 text-xs font-medium cursor-pointer'
+  }
+  if (enabled) {
+    return 'text-text2 px-4 py-3 text-xs font-medium cursor-pointer'
+  }
+  return 'text-text3 px-4 py-3 text-xs font-medium cursor-not-allowed'
+}
+
 function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>('Dashboard')
 
@@ -15,19 +25,15 @@ function App(): React.JSX.Element {
           const enabled = tab === 'Dashboard' || tab === 'New synthesis'
           const active = tab === activeTab
           return (
-            <div
+            <button
               key={tab}
-              onClick={enabled ? () => setActiveTab(tab) : undefined}
-              className={
-                active
-                  ? 'text-teal border-b-2 border-teal px-4 py-3 text-xs font-medium cursor-pointer'
-                  : enabled
-                    ? 'text-text2 px-4 py-3 text-xs font-medium cursor-pointer'
-                    : 'text-text3 px-4 py-3 text-xs font-medium cursor-not-allowed'
-              }
+              type="button"
+              disabled={!enabled}
+              onClick={() => setActiveTab(tab)}
+              className={getTabClassName(active, enabled)}
             >
               {tab}
-            </div>
+            </button>
           )
         })}
       </nav>

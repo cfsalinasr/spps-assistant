@@ -8,7 +8,7 @@ interface Step4Props {
   dispatch: Dispatch<WizardAction>
 }
 
-export default function Step4Resin({ state, dispatch }: Step4Props): React.JSX.Element {
+export default function Step4Resin({ state, dispatch }: Readonly<Step4Props>): React.JSX.Element {
   const { resin } = state
   const isValid =
     resin.substitutionMmolG > 0 &&

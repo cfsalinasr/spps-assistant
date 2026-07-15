@@ -8,11 +8,29 @@ import Step5Confirm from './new-synthesis/Step5Confirm'
 
 const STEP_LABELS = ['Sequences', 'Residue MW', 'Reagents', 'Resin', 'Confirm'] as const
 
+type StepStatus = 'done' | 'active' | 'upcoming'
+
+function getStepStatus(stepNum: number, currentStep: number): StepStatus {
+  if (stepNum < currentStep) return 'done'
+  if (stepNum === currentStep) return 'active'
+  return 'upcoming'
+}
+
+function getStepClassName(status: StepStatus): string {
+  if (status === 'done') {
+    return 'text-teal bg-teal-dim flex-1 text-center py-2 text-xs font-medium'
+  }
+  if (status === 'active') {
+    return 'text-text bg-bg3 flex-1 text-center py-2 text-xs font-medium'
+  }
+  return 'text-text3 flex-1 text-center py-2 text-xs font-medium'
+}
+
 interface NewSynthesisProps {
   onDone: () => void
 }
 
-export default function NewSynthesis({ onDone }: NewSynthesisProps): React.JSX.Element {
+export default function NewSynthesis({ onDone }: Readonly<NewSynthesisProps>): React.JSX.Element {
   const [state, dispatch] = useReducer(wizardReducer, initialWizardState)
 
   return (
@@ -25,17 +43,11 @@ export default function NewSynthesis({ onDone }: NewSynthesisProps): React.JSX.E
       <div className="flex mb-5">
         {STEP_LABELS.map((label, index) => {
           const stepNum = (index + 1) as 1 | 2 | 3 | 4 | 5
-          const status = stepNum < state.step ? 'done' : stepNum === state.step ? 'active' : 'upcoming'
+          const status = getStepStatus(stepNum, state.step)
           return (
             <div
               key={label}
-              className={
-                status === 'done'
-                  ? 'text-teal bg-teal-dim flex-1 text-center py-2 text-xs font-medium'
-                  : status === 'active'
-                    ? 'text-text bg-bg3 flex-1 text-center py-2 text-xs font-medium'
-                    : 'text-text3 flex-1 text-center py-2 text-xs font-medium'
-              }
+              className={getStepClassName(status)}
             >
               <span className="font-mono block">{String(stepNum).padStart(2, '0')}</span>
               {label}

@@ -119,6 +119,7 @@ def generate_synthesis():
         'vessel_count': len(vessels),
     }
 
+    tmp_path = None
     try:
         # Write atomically: temp file in the same directory, then rename.
         # This prevents partial/corrupted marker files on write interruption.
@@ -129,15 +130,24 @@ def generate_synthesis():
             encoding='utf-8',
             suffix='.tmp',
         ) as tmp_file:
-            json.dump(marker_data, tmp_file)
             tmp_path = tmp_file.name
+            json.dump(marker_data, tmp_file)
 
         os.replace(tmp_path, _MARKER_PATH)
-    except OSError as exc:
+        tmp_path = None  # replaced successfully, nothing left to clean up
+    except OSError:
         # Marker write failed, but synthesis generation succeeded.
         # Log the failure server-side but return success to client
         # since the real output files were genuinely created.
         logger.exception('Failed to write synthesis marker file')
+    finally:
+        # os.replace() failing (or never being reached) leaves the temp
+        # file behind — clean it up so repeated failures don't leak files.
+        if tmp_path is not None:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                logger.warning('Failed to remove temporary synthesis marker file', exc_info=True)
 
     return ok(output_paths)
 

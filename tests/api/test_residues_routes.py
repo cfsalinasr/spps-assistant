@@ -150,6 +150,22 @@ def test_post_residue_nan_free_mw_returns_400(app):
     assert body['error']['code'] == 'invalid_body'
 
 
+def test_post_residue_inf_free_mw_returns_400(app):
+    """Test that Infinity free_mw is rejected, not accepted as valid."""
+    client = app.test_client()
+
+    resp = client.post(
+        '/residues',
+        data=b'{"token": "A", "fmoc_mw": 311.3, "free_mw": Infinity}',
+        content_type='application/json'
+    )
+
+    assert resp.status_code == 400
+    body = resp.get_json()
+    assert body['ok'] is False
+    assert body['error']['code'] == 'invalid_body'
+
+
 def test_post_residue_non_string_token_returns_400(app):
     """Test that a non-string token value is rejected."""
     client = app.test_client()

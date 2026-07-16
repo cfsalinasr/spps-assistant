@@ -18,7 +18,8 @@ const spps = {
     ipcRenderer.invoke('spps:saveResidue', residue),
   generateSynthesis: (payload: Record<string, unknown>) =>
     ipcRenderer.invoke('spps:generateSynthesis', payload),
-  getLastSynthesis: () => ipcRenderer.invoke('spps:getLastSynthesis')
+  getLastSynthesis: () => ipcRenderer.invoke('spps:getLastSynthesis'),
+  setCyclePosition: (cycleNumber: number) => ipcRenderer.invoke('spps:setCyclePosition', cycleNumber)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

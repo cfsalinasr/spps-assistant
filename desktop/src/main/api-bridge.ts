@@ -48,10 +48,10 @@ export function registerConfigHandlers(
 }
 
 /**
- * Registers the IPC handlers for the synthesis wizard routes:
- * window.spps.parseSequences(), .getResidues(), .saveResidue(),
- * .generateSynthesis(), .getLastSynthesis(). Each delegates to
- * fetchFromSidecar to reach the corresponding backend route.
+ * Registers the IPC handlers for the synthesis wizard and Cycle Guide
+ * routes: window.spps.parseSequences(), .getResidues(), .saveResidue(),
+ * .generateSynthesis(), .getLastSynthesis(), .setCyclePosition(). Each
+ * delegates to fetchFromSidecar to reach the corresponding backend route.
  */
 export function registerSynthesisHandlers(
   ipcMain: Electron.IpcMain,
@@ -85,5 +85,13 @@ export function registerSynthesisHandlers(
 
   ipcMain.handle('spps:getLastSynthesis', () =>
     fetchFromSidecar(getSidecarInfo(), '/synthesis/last')
+  )
+
+  ipcMain.handle('spps:setCyclePosition', (_event, cycleNumber: number) =>
+    fetchFromSidecar(getSidecarInfo(), '/synthesis/cycle-position', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cycle_number: cycleNumber })
+    })
   )
 }

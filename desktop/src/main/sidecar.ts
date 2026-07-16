@@ -1,6 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createInterface } from 'node:readline'
 import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 
 // Known, fixed installation locations for python3.11 on the platforms this
 // project currently targets (macOS Homebrew, common Linux/CI paths). Spawning
@@ -8,8 +9,9 @@ import { existsSync } from 'node:fs'
 // writable — preferring one of these fixed, unwriteable-by-a-normal-user
 // paths closes that lookup window. Falls back to the bare command (searched
 // via PATH) only if none of these exist, so non-standard dev installs still
-// work. A later packaging phase will spawn a bundled, frozen executable by a
-// fixed relative path instead, removing this PATH dependency entirely.
+// work. Only used in dev mode — a packaged build spawns the bundled, frozen
+// sidecar executable by a fixed relative path instead (see startSidecar's
+// `packaged` option), which has no PATH dependency at all.
 const PYTHON_CANDIDATES = [
   '/opt/homebrew/bin/python3.11',
   '/usr/local/bin/python3.11',
@@ -30,27 +32,53 @@ export interface SidecarHandle {
   process: ChildProcessWithoutNullStreams
 }
 
+export interface SidecarSpawnOptions {
+  /** How long to wait for the readiness line before rejecting. */
+  timeoutMs?: number
+  /**
+   * True in a packaged build (Electron's `app.isPackaged`). When true,
+   * spawns the frozen sidecar executable from `resourcesPath` instead of
+   * `python3.11 -m spps_assistant.api` — the packaged app has no Python
+   * interpreter or the spps_assistant package installed on the host at
+   * all, only the PyInstaller-frozen binary bundled into the app.
+   */
+  packaged?: boolean
+  /** Electron's `process.resourcesPath`. Required when `packaged` is true. */
+  resourcesPath?: string
+}
+
 const READY_LINE_PATTERN = /^SPPS_SIDECAR_READY (\d+) (\S+)$/
 
 /**
- * Spawn the Python API sidecar (spps_assistant.api) and resolve once it
- * announces its port and auth token on stdout.
+ * Spawn the Python API sidecar and resolve once it announces its port and
+ * auth token on stdout.
  *
- * repoRoot must be the spps-assistant Python package root (the directory
- * containing pyproject.toml) — the sidecar is run as
- * `python3.11 -m spps_assistant.api` from there. Only python3.11 is used,
- * matching every other place this project runs Python (system python3 is
- * too old for spps_assistant). In dev mode this spawns the
- * already-installed package directly; a later packaging phase will spawn
- * a frozen executable instead and this function's contract (resolves with
- * a SidecarHandle) stays the same for callers.
+ * In dev mode (default), runs `python3.11 -m spps_assistant.api` from
+ * repoRoot (the spps-assistant Python package root, containing
+ * pyproject.toml) — only python3.11 is used, matching every other place
+ * this project runs Python (system python3 is too old for spps_assistant).
+ *
+ * In a packaged build (`options.packaged: true`), spawns the frozen
+ * sidecar executable bundled at `<resourcesPath>/sidecar/spps-sidecar`
+ * (built by `packaging/build_sidecar.sh` via PyInstaller and copied in by
+ * electron-builder's `extraResources` config) — no Python interpreter or
+ * PATH lookup involved at all. repoRoot/resolvePythonCommand() are unused
+ * in this path.
  */
-export function startSidecar(repoRoot: string, timeoutMs = 10000): Promise<SidecarHandle> {
+export function startSidecar(
+  repoRoot: string,
+  options: SidecarSpawnOptions = {}
+): Promise<SidecarHandle> {
+  const { timeoutMs = 10000, packaged = false, resourcesPath = '' } = options
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(resolvePythonCommand(), ['-m', 'spps_assistant.api'], {
-      cwd: repoRoot,
-      env: { ...process.env, SPPS_API_PORT: '0' }
-    })
+    const child = packaged
+      ? spawn(join(resourcesPath, 'sidecar', 'spps-sidecar'), [], {
+          env: { ...process.env, SPPS_API_PORT: '0' }
+        })
+      : spawn(resolvePythonCommand(), ['-m', 'spps_assistant.api'], {
+          cwd: repoRoot,
+          env: { ...process.env, SPPS_API_PORT: '0' }
+        })
 
     let settled = false
 

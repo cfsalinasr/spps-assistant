@@ -70,9 +70,14 @@ app
     // creating the window, so window.spps.getConfig()/setConfig() are ready
     // as soon as the renderer loads. repoRoot: npm run dev / electron-vite dev
     // runs with cwd set to desktop/, so going one directory up reaches the
-    // spps-assistant repo root where pyproject.toml lives.
+    // spps-assistant repo root where pyproject.toml lives. repoRoot is unused
+    // in a packaged build (the frozen sidecar is spawned by resourcesPath
+    // instead), but harmless to still compute.
     const repoRoot = resolve(process.cwd(), '..')
-    sidecarHandle = await startSidecar(repoRoot)
+    sidecarHandle = await startSidecar(repoRoot, {
+      packaged: app.isPackaged,
+      resourcesPath: process.resourcesPath
+    })
     registerConfigHandlers(ipcMain, () => {
       if (!sidecarHandle) throw new Error('Sidecar is not running')
       return sidecarHandle.info

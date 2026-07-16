@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: desktop
+appId: org.sppsassistant.desktop
+productName: SPPS Assistant
 directories:
   buildResources: build
 files:
@@ -9,25 +9,31 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+# The frozen Python sidecar (packaging/build_sidecar.sh output, staged at
+# desktop/resources/sidecar/ before this runs) is copied into the app's
+# Resources folder verbatim — asarUnpack alone isn't enough since the
+# sidecar's own files (a real executable + its bundled Python libs) must
+# never be packed into app.asar at all, only unpacked.
+extraResources:
+  - from: resources/sidecar
+    to: sidecar
 asarUnpack:
   - resources/**
 win:
-  executableName: desktop
+  executableName: SPPS Assistant
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
+  artifactName: ${productName}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
   entitlementsInherit: build/entitlements.mac.plist
-  extendInfo:
-    - NSCameraUsageDescription: Application requests access to the device's camera.
-    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
-    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
-    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+  # No notarization/code signing in v1 — deferred, not rejected (see
+  # SPPS_GUI_MIGRATION_PLAN.md §2). Users install an unsigned .dmg and
+  # click through Gatekeeper once; the install guide documents this.
   notarize: false
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${productName}-${version}.${ext}
 linux:
   target:
     - AppImage
@@ -38,6 +44,3 @@ linux:
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
-publish:
-  provider: generic
-  url: https://example.com/auto-updates

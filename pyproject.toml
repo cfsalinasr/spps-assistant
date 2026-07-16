@@ -35,6 +35,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7.4", "pytest-cov>=4.1"]
+# Build-time only — freezes the spps_assistant.api sidecar into a standalone
+# executable for the Electron GUI (see packaging/build_sidecar.sh). Never a
+# runtime dependency of the CLI or the sidecar itself.
+packaging = ["pyinstaller>=6.0"]
 
 [project.scripts]
 spps-assistant = "spps_assistant.cli.main:cli"

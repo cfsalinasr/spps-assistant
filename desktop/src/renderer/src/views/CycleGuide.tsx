@@ -195,9 +195,9 @@ export default function CycleGuide({ onNewSynthesis }: Readonly<CycleGuideProps>
           <h2 className="text-text2 font-sans text-xs uppercase tracking-wide mb-2">Deprotection record</h2>
           <Card className="bg-bg2 mb-4">
             <CardContent className="p-0">
-              {cycle.deprotection_steps.map((step) => (
+              {cycle.deprotection_steps.map((step, idx) => (
                 <div
-                  key={step.label}
+                  key={`${step.label}-${idx}`}
                   className="flex items-center gap-3 p-2 border-b border-[color:var(--border)] last:border-b-0"
                 >
                   <div className="flex gap-1">
@@ -215,9 +215,9 @@ export default function CycleGuide({ onNewSynthesis }: Readonly<CycleGuideProps>
           <h2 className="text-text2 font-sans text-xs uppercase tracking-wide mb-2">Coupling record</h2>
           <Card className="bg-bg2">
             <CardContent className="p-0">
-              {cycle.coupling_steps.map((step) => (
+              {cycle.coupling_steps.map((step, idx) => (
                 <div
-                  key={step.label}
+                  key={`${step.label}-${idx}`}
                   className="flex items-center gap-3 p-2 border-b border-[color:var(--border)] last:border-b-0"
                 >
                   {step.n_checkboxes > 0 && <div className="w-3 h-3 border border-[color:var(--border2)]" />}

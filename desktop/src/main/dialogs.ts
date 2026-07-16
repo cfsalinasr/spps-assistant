@@ -1,4 +1,8 @@
+import { existsSync } from 'node:fs'
+import { extname } from 'node:path'
 import { dialog, shell, type IpcMain } from 'electron'
+
+const OPENABLE_FILE_EXTENSIONS = new Set(['.pdf', '.docx'])
 
 /**
  * Registers native file/folder picker IPC handlers used by the New Synthesis
@@ -41,7 +45,15 @@ export function registerDialogHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('spps:openFile', (_event, filePath: string) => {
     if (typeof filePath !== 'string' || filePath.length === 0) {
       console.warn('spps:openFile received invalid path:', filePath)
-      return
+      return ''
+    }
+    if (!OPENABLE_FILE_EXTENSIONS.has(extname(filePath).toLowerCase())) {
+      console.warn('spps:openFile rejected path with disallowed extension:', filePath)
+      return ''
+    }
+    if (!existsSync(filePath)) {
+      console.warn('spps:openFile rejected path that does not exist:', filePath)
+      return ''
     }
     return shell.openPath(filePath)
   })

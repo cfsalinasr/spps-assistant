@@ -14,7 +14,7 @@ from spps_assistant.domain.yield_calc import (
     calc_peptide_mw, calc_theoretical_yield, back_calc_resin_mass, build_yield_formula
 )
 from spps_assistant.domain.solubility import analyze_peptide
-from spps_assistant.domain.sequence import parse_token
+from spps_assistant.domain.sequence import parse_token, token_to_3letter, build_coupling_label
 
 WASH_DURATION = '2 × 1 min'
 COUPLING_DURATION = '30 min'
@@ -58,7 +58,6 @@ def _build_dispatch_rows(
     cycle: CouplingCycle, config: SynthesisConfig, residue_info_map: Dict
 ) -> List[DispatchRow]:
     """Build dispatch rows (one per residue token active in this cycle)."""
-    from spps_assistant.domain.sequence import token_to_3letter
     from spps_assistant.domain.constants import FMOC_MW_DEFAULTS
     # parse_token is already imported at module level in this file.
     from spps_assistant.domain.stoichiometry import (
@@ -135,8 +134,6 @@ def _build_deprotection_steps(config: SynthesisConfig) -> List[GmpStep]:
 
 def _build_coupling_steps(config: SynthesisConfig, cycle: CouplingCycle) -> List[GmpStep]:
     """Build the coupling GMP steps for a cycle (4 repeats + post-coupling wash)."""
-    from spps_assistant.domain.sequence import build_coupling_label
-
     first_token = next(iter(cycle.residues_at_position), 'AA')
     coupling_label = build_coupling_label(config, first_token)
 
@@ -151,8 +148,6 @@ def _build_coupling_steps(config: SynthesisConfig, cycle: CouplingCycle) -> List
 
 def _build_vessel_assignments(cycle: CouplingCycle) -> List[VesselAssignment]:
     """Build the per-vessel residue-or-OUT assignment list for a cycle."""
-    from spps_assistant.domain.sequence import token_to_3letter
-
     idx = cycle.cycle_number - 1
     assignments = []
     for vessel in cycle.all_vessels:
@@ -170,8 +165,6 @@ def _build_secondary_coupling_rows(
     cycle: CouplingCycle, config: SynthesisConfig
 ) -> Optional[List[SecondaryCouplingRow]]:
     """Build the Teabag-only secondary coupling verification rows, or None."""
-    from spps_assistant.domain.sequence import token_to_3letter
-
     if config.vessel_method != 'Teabag':
         return None
 
@@ -189,7 +182,6 @@ def _build_secondary_coupling_rows(
 
 
 def build_cycle_guide_view_data(
-    vessels: List[Vessel],
     coupling_cycles: List[CouplingCycle],
     config: SynthesisConfig,
     residue_info_map: Dict,
@@ -446,7 +438,7 @@ class SynthesisGuideUseCase:
         # return value use this same data — the on-screen preview and the
         # exported documents can never drift apart.
         cycle_guide_data = build_cycle_guide_view_data(
-            vessels, coupling_cycles, config, residue_info_map, today
+            coupling_cycles, config, residue_info_map, today
         )
 
         # 4 & 5. Generate cycle guide (PDF + DOCX)

@@ -37,6 +37,11 @@ function App(): React.JSX.Element {
     }
   }, [])
 
+  function handleViewCycleGuide(): void {
+    setCycleGuideEnabled(true)
+    setActiveTab('Cycle guide')
+  }
+
   return (
     <div className="min-h-screen bg-bg">
       <nav className="bg-bg2 border-b border-[color:var(--border)] flex px-2">
@@ -62,13 +67,13 @@ function App(): React.JSX.Element {
       {activeTab === 'Dashboard' && (
         <Dashboard
           onNewSynthesis={() => setActiveTab('New synthesis')}
-          onViewCycleGuide={() => setActiveTab('Cycle guide')}
+          onViewCycleGuide={handleViewCycleGuide}
         />
       )}
       {activeTab === 'New synthesis' && (
         <NewSynthesis
           onDone={() => setActiveTab('Dashboard')}
-          onViewCycleGuide={() => setActiveTab('Cycle guide')}
+          onViewCycleGuide={handleViewCycleGuide}
         />
       )}
       {activeTab === 'Cycle guide' && (

@@ -150,6 +150,14 @@ class TestBuildCouplingLabel:
         assert 'DIC' in label
         assert 'Oxyma' not in label
 
+    def test_hbtu_no_oxyma_sentinel_base_omitted(self):
+        """Label omits the sentinel base value 'None' even when use_oxyma is False."""
+        config = _make_config(activator='HBTU', use_oxyma=False, base='None')
+        label = build_coupling_label(config, 'A')
+        assert 'HBTU' in label
+        assert 'Oxyma' not in label
+        assert 'None' not in label
+
 
 # ── generate_cycle_guide_pdf ──────────────────────────────────────────────────
 

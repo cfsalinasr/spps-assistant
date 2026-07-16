@@ -205,7 +205,7 @@ def _build_aa_dispatch_table(dispatch_rows: List[DispatchRow]) -> Table:
             vessels_str,
         ])
 
-    col_widths = [2.5 * cm, 2.5 * cm, 1.8 * cm, 2.2 * cm, 7.0 * cm, 1.2 * cm, 2.5 * cm]
+    col_widths = [2.3 * cm, 2.3 * cm, 1.6 * cm, 2.0 * cm, 6.3 * cm, 1.2 * cm, 2.2 * cm]
     table = Table(data, colWidths=col_widths)
     table.setStyle(TABLE_HEADER_STYLE)
     return table
@@ -342,7 +342,7 @@ def generate_cycle_guide_pdf(
 
     from spps_assistant.application.synthesis_guide import build_cycle_guide_view_data
 
-    view_data = build_cycle_guide_view_data(vessels, coupling_cycles, config, residue_info_map, date_str)
+    view_data = build_cycle_guide_view_data(coupling_cycles, config, residue_info_map, date_str)
 
     # One page per coupling cycle
     for cycle_page in view_data.cycles:

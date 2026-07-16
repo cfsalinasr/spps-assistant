@@ -107,7 +107,9 @@ def build_coupling_label(config: SynthesisConfig, token: str) -> str:
             return f"{three} + {act} + Oxyma + {base}"
         elif config.use_oxyma:
             return f"{three} + {act} + Oxyma"
-        return f"{three} + {act} + {base}"
+        elif base not in ('None', 'none', ''):
+            return f"{three} + {act} + {base}"
+        return f"{three} + {act}"
 
 
 def get_unique_tokens(vessels) -> List[str]:

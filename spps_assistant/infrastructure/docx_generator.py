@@ -284,7 +284,7 @@ def generate_cycle_guide_docx(
 
     from spps_assistant.application.synthesis_guide import build_cycle_guide_view_data
 
-    view_data = build_cycle_guide_view_data(vessels, coupling_cycles, config, residue_info_map, date_str)
+    view_data = build_cycle_guide_view_data(coupling_cycles, config, residue_info_map, date_str)
 
     # Coupling cycle pages
     for i, cycle_page in enumerate(view_data.cycles):

@@ -96,4 +96,37 @@ describe('App', () => {
       expect(tab.className).not.toContain('cursor-not-allowed')
     })
   })
+
+  it('enables the Cycle guide tab after viewing it from Dashboard mid-session, even with no synthesis at mount', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('spps', {
+      getConfig: () => Promise.resolve({ ok: true, data: {} }),
+      setConfig: () => Promise.resolve({ ok: true, data: {} }),
+      getLastSynthesis: () =>
+        Promise.resolve({
+          ok: true,
+          data: {
+            name: 'TestRun',
+            output_directory: '/tmp/out',
+            generated_at: '2026-01-01T00:00:00+00:00',
+            vessel_count: 1,
+            current_cycle: 1
+          }
+        }),
+      pickFastaFile: vi.fn().mockResolvedValue(null)
+    })
+
+    const { container } = render(<App />)
+    const nav = within(container.querySelector('nav')!)
+
+    await waitFor(() => {
+      expect(nav.getByText('Cycle guide').className).toContain('cursor-not-allowed')
+    })
+
+    await user.click(await screen.findByRole('button', { name: /view cycle guide/i }))
+
+    await waitFor(() => {
+      expect(nav.getByText('Cycle guide').className).not.toContain('cursor-not-allowed')
+    })
+  })
 })

@@ -47,7 +47,7 @@ class TestBuildCycleGuideViewData:
         v = _vessel(1, 'P1', 'A')
         cycles = build_coupling_cycles([v])
         config = _config()
-        result = build_cycle_guide_view_data([v], cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
         assert isinstance(result, CycleGuideViewData)
         assert result.synthesis_name == 'Test'
         assert result.date_str == '2026-01-01'
@@ -56,7 +56,7 @@ class TestBuildCycleGuideViewData:
         v = _vessel(1, 'P1', 'AGW')
         cycles = build_coupling_cycles([v])
         config = _config()
-        result = build_cycle_guide_view_data([v], cycles, config, {}, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         assert len(result.cycles) == 3
         assert all(isinstance(c, CyclePageData) for c in result.cycles)
 
@@ -64,7 +64,7 @@ class TestBuildCycleGuideViewData:
         v = _vessel(1, 'P1', 'AG')
         cycles = build_coupling_cycles([v])
         config = _config()
-        result = build_cycle_guide_view_data([v], cycles, config, {}, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         assert [c.cycle_number for c in result.cycles] == [1, 2]
         assert all(c.total_cycles == 2 for c in result.cycles)
 
@@ -73,7 +73,7 @@ class TestBuildCycleGuideViewData:
         cycles = build_coupling_cycles([v])
         config = _config()
         info = {'A': _info('A', 'A', fmoc_mw=311.3)}
-        result = build_cycle_guide_view_data([v], cycles, config, info, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, info, '2026-01-01')
         row = result.cycles[0].dispatch_rows[0]
         assert isinstance(row, DispatchRow)
         assert row.residue_3letter == 'Ala'
@@ -84,7 +84,7 @@ class TestBuildCycleGuideViewData:
         v = _vessel(1, 'P1', 'A')
         cycles = build_coupling_cycles([v])
         config = _config()
-        result = build_cycle_guide_view_data([v], cycles, config, {}, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         row = result.cycles[0].dispatch_rows[0]
         assert row.fmoc_mw == pytest.approx(311.3)  # FMOC_MW_DEFAULTS['A']
 
@@ -92,7 +92,7 @@ class TestBuildCycleGuideViewData:
         v = _vessel(1, 'P1', 'A')
         cycles = build_coupling_cycles([v])
         config = _config(volume_mode='legacy')
-        result = build_cycle_guide_view_data([v], cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
         row = result.cycles[0].dispatch_rows[0]
         assert row.formula_shown == 'V = 1 × 2 mL'
 
@@ -100,7 +100,7 @@ class TestBuildCycleGuideViewData:
         v = _vessel(1, 'P1', 'A')
         cycles = build_coupling_cycles([v])
         config = _config(include_bb_test=True)
-        result = build_cycle_guide_view_data([v], cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
         steps = result.cycles[0].deprotection_steps
         assert any('Bromophenol' in s.detail for s in steps)
         assert all(isinstance(s, GmpStep) for s in steps)
@@ -109,7 +109,7 @@ class TestBuildCycleGuideViewData:
         v = _vessel(1, 'P1', 'A')
         cycles = build_coupling_cycles([v])
         config = _config(include_bb_test=False)
-        result = build_cycle_guide_view_data([v], cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
         steps = result.cycles[0].deprotection_steps
         assert not any('Bromophenol' in s.detail for s in steps)
 
@@ -117,7 +117,7 @@ class TestBuildCycleGuideViewData:
         v = _vessel(1, 'P1', 'A')
         cycles = build_coupling_cycles([v])
         config = _config(include_kaiser_test=True)
-        result = build_cycle_guide_view_data([v], cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
         steps = result.cycles[0].deprotection_steps
         assert any('Kaiser' in s.label for s in steps)
 
@@ -125,7 +125,7 @@ class TestBuildCycleGuideViewData:
         v = _vessel(1, 'P1', 'A')
         cycles = build_coupling_cycles([v])
         config = _config()
-        result = build_cycle_guide_view_data([v], cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
         assert result.cycles[0].deprotection_steps[0].n_checkboxes == 2
         assert result.cycles[0].deprotection_steps[1].n_checkboxes == 3
 
@@ -133,7 +133,7 @@ class TestBuildCycleGuideViewData:
         v = _vessel(1, 'P1', 'A')
         cycles = build_coupling_cycles([v])
         config = _config()
-        result = build_cycle_guide_view_data([v], cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
         steps = result.cycles[0].coupling_steps
         assert len(steps) == 5
         assert steps[0].label == '1st coupling'
@@ -144,14 +144,14 @@ class TestBuildCycleGuideViewData:
         v = _vessel(1, 'P1', 'A')
         cycles = build_coupling_cycles([v])
         config = _config(activator='DIC', use_oxyma=True)
-        result = build_cycle_guide_view_data([v], cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
         assert 'DIC' in result.cycles[0].coupling_steps[0].detail
 
     def test_vessel_assignment_shows_residue_for_active_vessel(self):
         v = _vessel(1, 'P1', 'A')
         cycles = build_coupling_cycles([v])
         config = _config()
-        result = build_cycle_guide_view_data([v], cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
         va = result.cycles[0].vessel_assignments[0]
         assert isinstance(va, VesselAssignment)
         assert va.vessel_number == 1
@@ -163,7 +163,7 @@ class TestBuildCycleGuideViewData:
         cycles = build_coupling_cycles([v1, v2])
         config = _config()
         info = {'A': _info('A', 'A'), 'G': _info('G', 'G', fmoc_mw=297.3, free_mw=57.05)}
-        result = build_cycle_guide_view_data([v1, v2], cycles, config, info, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, info, '2026-01-01')
         cycle_2 = result.cycles[1]
         va1 = next(va for va in cycle_2.vessel_assignments if va.vessel_number == 1)
         assert va1.residue_3letter is None
@@ -172,7 +172,7 @@ class TestBuildCycleGuideViewData:
         v = _vessel(1, 'P1', 'A')
         cycles = build_coupling_cycles([v])
         config = _config(vessel_method='Teabag')
-        result = build_cycle_guide_view_data([v], cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
         rows = result.cycles[0].secondary_coupling_rows
         assert rows is not None
         assert isinstance(rows[0], SecondaryCouplingRow)
@@ -182,5 +182,5 @@ class TestBuildCycleGuideViewData:
         v = _vessel(1, 'P1', 'A')
         cycles = build_coupling_cycles([v])
         config = _config(vessel_method='Column')
-        result = build_cycle_guide_view_data([v], cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
+        result = build_cycle_guide_view_data(cycles, config, {'A': _info('A', 'A')}, '2026-01-01')
         assert result.cycles[0].secondary_coupling_rows is None

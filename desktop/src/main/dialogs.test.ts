@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const showOpenDialogMock = vi.fn()
 const showItemInFolderMock = vi.fn()
 const openPathMock = vi.fn()
+const existsSyncMock = vi.fn()
 const ipcMainHandlers: Record<string, (...args: unknown[]) => unknown> = {}
 
 vi.mock('electron', () => ({
@@ -18,6 +19,10 @@ vi.mock('electron', () => ({
   }
 }))
 
+vi.mock('node:fs', () => ({
+  existsSync: (...args: unknown[]) => existsSyncMock(...args)
+}))
+
 import { ipcMain } from 'electron'
 import { registerDialogHandlers } from './dialogs'
 
@@ -26,6 +31,8 @@ describe('registerDialogHandlers', () => {
     showOpenDialogMock.mockReset()
     showItemInFolderMock.mockReset()
     openPathMock.mockReset()
+    existsSyncMock.mockReset()
+    existsSyncMock.mockReturnValue(true)
     for (const key of Object.keys(ipcMainHandlers)) delete ipcMainHandlers[key]
     registerDialogHandlers(ipcMain)
   })
@@ -88,6 +95,20 @@ describe('registerDialogHandlers', () => {
 
   it('spps:openFile does not call shell.openPath with an empty string', async () => {
     await ipcMainHandlers['spps:openFile'](null, '')
+    expect(openPathMock).not.toHaveBeenCalled()
+  })
+
+  it('spps:openFile rejects a path that does not end in .pdf or .docx', async () => {
+    existsSyncMock.mockReturnValue(true)
+    const result = await ipcMainHandlers['spps:openFile'](null, '/tmp/out/guide.txt')
+    expect(result).toBe('')
+    expect(openPathMock).not.toHaveBeenCalled()
+  })
+
+  it('spps:openFile rejects a .pdf path that does not exist on disk', async () => {
+    existsSyncMock.mockReturnValue(false)
+    const result = await ipcMainHandlers['spps:openFile'](null, '/tmp/out/missing.pdf')
+    expect(result).toBe('')
     expect(openPathMock).not.toHaveBeenCalled()
   })
 })

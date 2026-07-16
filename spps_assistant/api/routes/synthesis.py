@@ -37,6 +37,26 @@ def _vessel_from_dict(data: dict) -> Vessel:
     )
 
 
+def _write_marker_atomic(marker_data: dict) -> None:
+    """Write marker_data to _MARKER_PATH atomically. Raises OSError on failure."""
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode='w', dir=_MARKER_PATH.parent, delete=False,
+            encoding='utf-8', suffix='.tmp',
+        ) as tmp_file:
+            tmp_path = tmp_file.name
+            json.dump(marker_data, tmp_file)
+        os.replace(tmp_path, _MARKER_PATH)
+        tmp_path = None
+    finally:
+        if tmp_path is not None:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                logger.warning('Failed to remove temporary synthesis marker file', exc_info=True)
+
+
 def _residue_info_from_dict(token: str, data: dict) -> ResidueInfo:
     fmoc_mw = float(data['fmoc_mw'])
     free_mw = float(data['free_mw'])
@@ -127,35 +147,15 @@ def generate_synthesis():
         'cycle_guide': asdict(cycle_guide_data),
     }
 
-    tmp_path = None
     try:
         # Write atomically: temp file in the same directory, then rename.
         # This prevents partial/corrupted marker files on write interruption.
-        with tempfile.NamedTemporaryFile(
-            mode='w',
-            dir=_MARKER_PATH.parent,
-            delete=False,
-            encoding='utf-8',
-            suffix='.tmp',
-        ) as tmp_file:
-            tmp_path = tmp_file.name
-            json.dump(marker_data, tmp_file)
-
-        os.replace(tmp_path, _MARKER_PATH)
-        tmp_path = None  # replaced successfully, nothing left to clean up
+        _write_marker_atomic(marker_data)
     except OSError:
         # Marker write failed, but synthesis generation succeeded.
         # Log the failure server-side but return success to client
         # since the real output files were genuinely created.
         logger.exception('Failed to write synthesis marker file')
-    finally:
-        # os.replace() failing (or never being reached) leaves the temp
-        # file behind — clean it up so repeated failures don't leak files.
-        if tmp_path is not None:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                logger.warning('Failed to remove temporary synthesis marker file', exc_info=True)
 
     return ok(output_paths)
 
@@ -181,32 +181,20 @@ def set_cycle_position():
         logger.exception('Failed to read synthesis marker for cycle-position update')
         return err('marker_read_failed', 'Could not read the synthesis marker.'), 500
 
-    cycle_guide = marker_data.get('cycle_guide') or {}
+    cycle_guide = marker_data.get('cycle_guide')
+    if not isinstance(cycle_guide, dict):
+        cycle_guide = {}
     total_cycles = len(cycle_guide.get('cycles', []))
     if total_cycles == 0 or not (1 <= cycle_number <= total_cycles):
         return err('invalid_body', f'cycle_number must be between 1 and {total_cycles}'), 400
 
     marker_data['current_cycle'] = cycle_number
 
-    tmp_path = None
     try:
-        with tempfile.NamedTemporaryFile(
-            mode='w', dir=_MARKER_PATH.parent, delete=False,
-            encoding='utf-8', suffix='.tmp',
-        ) as tmp_file:
-            tmp_path = tmp_file.name
-            json.dump(marker_data, tmp_file)
-        os.replace(tmp_path, _MARKER_PATH)
-        tmp_path = None
+        _write_marker_atomic(marker_data)
     except OSError:
         logger.exception('Failed to write synthesis marker file')
         return err('marker_write_failed', 'Could not save the cycle position.'), 500
-    finally:
-        if tmp_path is not None:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                logger.warning('Failed to remove temporary synthesis marker file', exc_info=True)
 
     return ok({'current_cycle': cycle_number})
 

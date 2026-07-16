@@ -1,0 +1,91 @@
+name: Build Windows Installer
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'spps_assistant/**'
+      - 'packaging/**'
+      - 'desktop/**'
+      - 'pyproject.toml'
+      - '.github/workflows/build-windows.yml'
+
+jobs:
+  build-windows:
+    name: Build Windows installer
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install Python dependencies (incl. PyInstaller)
+        run: pip install -e ".[packaging]"
+
+      - name: Freeze the sidecar
+        shell: bash
+        run: ./packaging/build_sidecar.sh
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Typecheck and build the renderer/main bundles
+        working-directory: desktop
+        run: npm run build
+
+      - name: Build the Windows installer
+        working-directory: desktop
+        run: npx electron-builder --win
+
+      - name: Smoke test — the frozen sidecar responds over real HTTP
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No display server in CI for a real Electron launch, but this
+          # proves the PyInstaller freeze itself produced a genuinely
+          # working Windows binary with reportlab/python-docx/openpyxl all
+          # correctly bundled (same dependencies already verified working
+          # on macOS in Phase 7) — the actual cross-platform risk area.
+          ./desktop/resources/sidecar/spps-sidecar.exe > sidecar_ci.log 2>&1 &
+          SIDECAR_PID=$!
+          for _ in $(seq 1 40); do
+            if grep -q "SPPS_SIDECAR_READY" sidecar_ci.log 2>/dev/null; then
+              break
+            fi
+            sleep 0.5
+          done
+          cat sidecar_ci.log
+          PORT=$(grep -o 'SPPS_SIDECAR_READY [0-9]* \S*' sidecar_ci.log | awk '{print $2}')
+          if [ -z "$PORT" ]; then
+            echo "Sidecar never announced readiness" >&2
+            kill "$SIDECAR_PID" 2>/dev/null || true
+            exit 1
+          fi
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/health")
+          kill "$SIDECAR_PID" 2>/dev/null || true
+          echo "Health check without an auth token (expect 401): $STATUS"
+          if [ "$STATUS" != "401" ]; then
+            echo "Unexpected status code: $STATUS" >&2
+            exit 1
+          fi
+
+      - name: Upload Windows installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spps-assistant-windows-installer
+          path: desktop/dist/*.exe
+          retention-days: 30

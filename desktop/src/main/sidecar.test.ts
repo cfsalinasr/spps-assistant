@@ -2,7 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { resolve } from 'node:path'
 import { EventEmitter } from 'node:events'
 import { Readable } from 'node:stream'
-import { startSidecar, stopSidecar, resolvePythonCommand } from './sidecar'
+import {
+  startSidecar,
+  stopSidecar,
+  resolvePythonCommand,
+  frozenSidecarExecutableName
+} from './sidecar'
 
 const REPO_ROOT = resolve(__dirname, '../../..')
 
@@ -91,12 +96,26 @@ describe('startSidecar', () => {
     })
 
     expect(spawnMock).toHaveBeenCalledWith(
-      '/Applications/SPPS Assistant.app/Contents/Resources/sidecar/spps-sidecar',
+      `/Applications/SPPS Assistant.app/Contents/Resources/sidecar/${frozenSidecarExecutableName()}`,
       [],
       expect.objectContaining({ env: expect.any(Object) })
     )
 
     await expect(pending).rejects.toThrow('Sidecar did not announce readiness within timeout')
     vi.doUnmock('node:child_process')
+  })
+})
+
+describe('frozenSidecarExecutableName', () => {
+  it('appends .exe on Windows', () => {
+    expect(frozenSidecarExecutableName('win32')).toBe('spps-sidecar.exe')
+  })
+
+  it('has no extension on macOS', () => {
+    expect(frozenSidecarExecutableName('darwin')).toBe('spps-sidecar')
+  })
+
+  it('has no extension on Linux', () => {
+    expect(frozenSidecarExecutableName('linux')).toBe('spps-sidecar')
   })
 })

@@ -22,6 +22,11 @@ export function resolvePythonCommand(): string {
   return PYTHON_CANDIDATES.find((path) => existsSync(path)) ?? 'python3.11'
 }
 
+/** PyInstaller names the frozen executable with a .exe suffix on Windows. */
+export function frozenSidecarExecutableName(platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? 'spps-sidecar.exe' : 'spps-sidecar'
+}
+
 export interface SidecarInfo {
   port: number
   token: string
@@ -59,8 +64,9 @@ const READY_LINE_PATTERN = /^SPPS_SIDECAR_READY (\d+) (\S+)$/
  * this project runs Python (system python3 is too old for spps_assistant).
  *
  * In a packaged build (`options.packaged: true`), spawns the frozen
- * sidecar executable bundled at `<resourcesPath>/sidecar/spps-sidecar`
- * (built by `packaging/build_sidecar.sh` via PyInstaller and copied in by
+ * sidecar executable bundled at
+ * `<resourcesPath>/sidecar/<frozenSidecarExecutableName()>` (built by
+ * `packaging/build_sidecar.sh` via PyInstaller and copied in by
  * electron-builder's `extraResources` config) — no Python interpreter or
  * PATH lookup involved at all. repoRoot/resolvePythonCommand() are unused
  * in this path.
@@ -72,7 +78,7 @@ export function startSidecar(
   const { timeoutMs = 10000, packaged = false, resourcesPath = '' } = options
   return new Promise((resolvePromise, reject) => {
     const child = packaged
-      ? spawn(join(resourcesPath, 'sidecar', 'spps-sidecar'), [], {
+      ? spawn(join(resourcesPath, 'sidecar', frozenSidecarExecutableName()), [], {
           env: { ...process.env, SPPS_API_PORT: '0' }
         })
       : spawn(resolvePythonCommand(), ['-m', 'spps_assistant.api'], {

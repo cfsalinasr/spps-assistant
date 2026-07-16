@@ -202,7 +202,10 @@ export default function CycleGuide({ onNewSynthesis }: Readonly<CycleGuideProps>
                 >
                   <div className="flex gap-1">
                     {Array.from({ length: step.n_checkboxes }).map((_, i) => (
-                      <div key={i} className="w-3 h-3 border border-[color:var(--border2)]" />
+                      <div
+                        key={`${step.label}-checkbox-${i}`}
+                        className="w-3 h-3 border border-[color:var(--border2)]"
+                      />
                     ))}
                   </div>
                   <div className="flex-1 text-text font-sans text-xs">{step.label}</div>

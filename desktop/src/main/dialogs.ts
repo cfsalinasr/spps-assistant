@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs'
 import { extname } from 'node:path'
 import { dialog, shell, type IpcMain } from 'electron'
+import { isKnownOutputPath } from './knownOutputPaths'
 
 const OPENABLE_FILE_EXTENSIONS = new Set(['.pdf', '.docx'])
 
@@ -46,6 +47,13 @@ export function registerDialogHandlers(ipcMain: IpcMain): void {
     if (typeof filePath !== 'string' || filePath.length === 0) {
       console.warn('spps:openFile received invalid path:', filePath)
       return 'Invalid file path.'
+    }
+    // The renderer's argument is never trusted on its own — it must match a
+    // path the main process itself already learned about from a sidecar
+    // response (see knownOutputPaths.ts), not an arbitrary filesystem path.
+    if (!isKnownOutputPath(filePath)) {
+      console.warn('spps:openFile rejected path outside the known output paths:', filePath)
+      return 'File not found.'
     }
     if (!OPENABLE_FILE_EXTENSIONS.has(extname(filePath).toLowerCase())) {
       console.warn('spps:openFile rejected path with disallowed extension:', filePath)

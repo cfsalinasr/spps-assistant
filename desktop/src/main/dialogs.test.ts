@@ -4,6 +4,7 @@ const showOpenDialogMock = vi.fn()
 const showItemInFolderMock = vi.fn()
 const openPathMock = vi.fn()
 const existsSyncMock = vi.fn()
+const isKnownOutputPathMock = vi.fn()
 const ipcMainHandlers: Record<string, (...args: unknown[]) => unknown> = {}
 
 vi.mock('electron', () => ({
@@ -23,6 +24,10 @@ vi.mock('node:fs', () => ({
   existsSync: (...args: unknown[]) => existsSyncMock(...args)
 }))
 
+vi.mock('./knownOutputPaths', () => ({
+  isKnownOutputPath: (...args: unknown[]) => isKnownOutputPathMock(...args)
+}))
+
 import { ipcMain } from 'electron'
 import { registerDialogHandlers } from './dialogs'
 
@@ -33,6 +38,8 @@ describe('registerDialogHandlers', () => {
     openPathMock.mockReset()
     existsSyncMock.mockReset()
     existsSyncMock.mockReturnValue(true)
+    isKnownOutputPathMock.mockReset()
+    isKnownOutputPathMock.mockReturnValue(true)
     for (const key of Object.keys(ipcMainHandlers)) delete ipcMainHandlers[key]
     registerDialogHandlers(ipcMain)
   })
@@ -118,5 +125,18 @@ describe('registerDialogHandlers', () => {
     const result = await ipcMainHandlers['spps:openFile'](null, '')
     expect(result).not.toBe('')
     expect(typeof result).toBe('string')
+  })
+
+  it('spps:openFile rejects a path the main process never learned about from a sidecar response, even with a valid extension and an existing file', async () => {
+    isKnownOutputPathMock.mockReturnValue(false)
+    const result = await ipcMainHandlers['spps:openFile'](null, '/etc/some-other-file.pdf')
+    expect(result).not.toBe('')
+    expect(typeof result).toBe('string')
+    expect(openPathMock).not.toHaveBeenCalled()
+  })
+
+  it('spps:openFile checks the path against the known-output-paths allowlist', async () => {
+    await ipcMainHandlers['spps:openFile'](null, '/tmp/out/guide.pdf')
+    expect(isKnownOutputPathMock).toHaveBeenCalledWith('/tmp/out/guide.pdf')
   })
 })

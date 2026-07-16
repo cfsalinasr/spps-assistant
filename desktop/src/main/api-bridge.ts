@@ -1,4 +1,5 @@
 import type { SidecarInfo } from './sidecar'
+import { recordOutputPaths } from './knownOutputPaths'
 
 const AUTH_HEADER = 'X-SPPS-Sidecar-Token'
 const FETCH_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
@@ -24,6 +25,14 @@ export async function fetchFromSidecar(
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
   })
   return response.json()
+}
+
+/** Pulls output_paths out of a sidecar envelope, tolerating any shape. */
+function outputPathsFrom(envelope: unknown): unknown {
+  if (!envelope || typeof envelope !== 'object') return undefined
+  const data = (envelope as { data?: unknown }).data
+  if (!data || typeof data !== 'object') return undefined
+  return (data as { output_paths?: unknown }).output_paths
 }
 
 /**
@@ -75,17 +84,21 @@ export function registerSynthesisHandlers(
     })
   )
 
-  ipcMain.handle('spps:generateSynthesis', (_event, payload: Record<string, unknown>) =>
-    fetchFromSidecar(getSidecarInfo(), '/synthesis/generate', {
+  ipcMain.handle('spps:generateSynthesis', async (_event, payload: Record<string, unknown>) => {
+    const envelope = await fetchFromSidecar(getSidecarInfo(), '/synthesis/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
-  )
+    recordOutputPaths(outputPathsFrom(envelope))
+    return envelope
+  })
 
-  ipcMain.handle('spps:getLastSynthesis', () =>
-    fetchFromSidecar(getSidecarInfo(), '/synthesis/last')
-  )
+  ipcMain.handle('spps:getLastSynthesis', async () => {
+    const envelope = await fetchFromSidecar(getSidecarInfo(), '/synthesis/last')
+    recordOutputPaths(outputPathsFrom(envelope))
+    return envelope
+  })
 
   ipcMain.handle('spps:setCyclePosition', (_event, cycleNumber: number) =>
     fetchFromSidecar(getSidecarInfo(), '/synthesis/cycle-position', {

@@ -2,11 +2,11 @@
 # SPPS Assistant — Interactive Lab Launcher (LEGACY, v1.0 terminal menu)
 #
 # As of v2.0, the primary interface is the Electron desktop app (see
-# desktop/ and packaging/) — SPPS Assistant.app/.exe now launches that
-# directly instead of this script. This terminal menu is kept as a
-# dev-only / scripting fallback (the underlying `spps-assistant` CLI it
-# wraps is unchanged and still fully supported), not deleted outright,
-# since v2.0 hasn't yet been confirmed stable in real day-to-day lab use.
+# desktop/ and packaging/) — a built SPPS Assistant.app/.exe launches that
+# directly, not this script. This terminal menu is kept as a dev-only /
+# scripting fallback (the underlying `spps-assistant` CLI it wraps is
+# unchanged and still fully supported), not deleted outright, since v2.0
+# hasn't yet been confirmed stable in real day-to-day lab use.
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 

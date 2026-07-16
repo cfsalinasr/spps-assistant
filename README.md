@@ -3,11 +3,13 @@
 A tool for parallel Solid Phase Peptide Synthesis (SPPS) workflow management.
 Replaces the legacy Perl-based Spys.exe with a modern, GMP-compliant, cross-platform tool.
 
-As of v2.0, SPPS Assistant ships as a standalone Electron desktop app (`desktop/`,
-built via `packaging/`) — a real installer for scientists who don't want a terminal,
-backed by the same Python business logic described below through a local Flask
-sidecar (`spps_assistant/api/`). The underlying `spps-assistant` CLI documented in
-this README is unchanged and remains fully supported for scripting/automation.
+As of v2.0, SPPS Assistant also has a standalone Electron desktop app
+(`desktop/`, built via `packaging/`) — a real installer for scientists who
+don't want a terminal, backed by the same Python business logic described
+below through a local Flask sidecar (`spps_assistant/api/`). Built installers
+are published on this repo's [GitHub Releases](../../releases) page. The
+underlying `spps-assistant` CLI documented in this README is unchanged and
+remains fully supported for scripting/automation.
 
 ## Features
 

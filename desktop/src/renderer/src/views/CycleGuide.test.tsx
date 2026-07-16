@@ -63,7 +63,7 @@ function stubSpps(overrides: Record<string, unknown> = {}): void {
         }
       }),
     setCyclePosition: vi.fn().mockResolvedValue({ ok: true, data: { current_cycle: 1 } }),
-    openFile: vi.fn().mockResolvedValue(undefined),
+    openFile: vi.fn().mockResolvedValue(''),
     ...overrides
   })
 }
@@ -118,6 +118,21 @@ describe('CycleGuide', () => {
     expect(window.spps.openFile).toHaveBeenCalledWith('/tmp/out/guide.pdf')
   })
 
+  it('shows an error message when opening the exported file fails', async () => {
+    stubSpps({
+      openFile: vi.fn().mockResolvedValue('No application is set to open this file.')
+    })
+    const user = userEvent.setup()
+    render(<CycleGuide onNewSynthesis={() => {}} />)
+
+    await waitFor(() => expect(screen.getByText('TestRun')).toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: /export pdf/i }))
+
+    await waitFor(() =>
+      expect(screen.getByText(/no application is set/i)).toBeInTheDocument()
+    )
+  })
+
   it('shows an empty state and a New synthesis button when no synthesis exists', async () => {
     stubSpps({ getLastSynthesis: () => Promise.resolve({ ok: true, data: null }) })
     const onNewSynthesis = vi.fn()
@@ -127,5 +142,26 @@ describe('CycleGuide', () => {
     await waitFor(() => expect(screen.getByText(/no active synthesis/i)).toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: /new synthesis/i }))
     expect(onNewSynthesis).toHaveBeenCalled()
+  })
+
+  it('shows an empty state instead of crashing when cycle_guide has zero cycles', async () => {
+    stubSpps({
+      getLastSynthesis: () =>
+        Promise.resolve({
+          ok: true,
+          data: {
+            name: 'TestRun',
+            output_directory: '/tmp/out',
+            generated_at: '2026-01-01T00:00:00+00:00',
+            vessel_count: 1,
+            output_paths: {},
+            current_cycle: 1,
+            cycle_guide: { synthesis_name: 'TestRun', date_str: '2026-01-01', cycles: [] }
+          }
+        })
+    })
+    render(<CycleGuide onNewSynthesis={() => {}} />)
+
+    await waitFor(() => expect(screen.getByText(/no active synthesis/i)).toBeInTheDocument())
   })
 })

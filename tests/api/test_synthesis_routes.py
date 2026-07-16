@@ -445,3 +445,59 @@ def test_set_cycle_position_boolean_returns_400(app, tmp_path):
     resp = client.post('/synthesis/cycle-position', json={'cycle_number': True})
 
     assert resp.status_code == 400
+
+
+def test_set_cycle_position_corrupted_marker_returns_500(app, tmp_path, monkeypatch):
+    """Test that a corrupted/malformed marker file returns 500, not a crash."""
+    import spps_assistant.api.routes.synthesis as synthesis_module
+
+    client = app.test_client()
+    marker_path = tmp_path / 'last_synthesis.json'
+
+    # Redirect marker path to our tmp location
+    monkeypatch.setattr(synthesis_module, '_MARKER_PATH', marker_path)
+
+    # Write invalid JSON to the marker file
+    marker_path.parent.mkdir(parents=True, exist_ok=True)
+    marker_path.write_text('{ invalid json', encoding='utf-8')
+
+    resp = client.post('/synthesis/cycle-position', json={'cycle_number': 1})
+
+    assert resp.status_code == 500
+    body = resp.get_json()
+    assert body['ok'] is False
+    assert body['error']['code'] == 'marker_read_failed'
+
+
+def test_set_cycle_position_marker_write_failure_returns_500(app, tmp_path, monkeypatch):
+    """Test that if marker write fails, the cycle-position update returns 500 —
+    unlike /synthesis/generate, this route has no real output files to fall
+    back on, so a write failure IS the whole operation failing."""
+    import os
+    import spps_assistant.api.routes.synthesis as synthesis_module
+
+    client = app.test_client()
+    out_dir = tmp_path / 'output'
+
+    # Establish real marker state first (no monkeypatch active yet).
+    client.post('/synthesis/generate', json={
+        'vessels': [_vessel_payload(1, 'Pep1', ['A'])],
+        'residue_info_map': {'A': _residue_payload()},
+        'config_overrides': {'name': 'TestRun', 'output_directory': str(out_dir)},
+    })
+
+    # Now monkeypatch os.replace to raise OSError, simulating a marker write failure
+    original_replace = os.replace
+    def failing_replace(src, dst):
+        if 'last_synthesis' in str(dst):
+            raise OSError('Simulated marker write failure')
+        return original_replace(src, dst)
+
+    monkeypatch.setattr('os.replace', failing_replace)
+
+    resp = client.post('/synthesis/cycle-position', json={'cycle_number': 1})
+
+    assert resp.status_code == 500
+    body = resp.get_json()
+    assert body['ok'] is False
+    assert body['error']['code'] == 'marker_write_failed'

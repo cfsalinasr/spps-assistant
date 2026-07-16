@@ -116,7 +116,7 @@ export interface SppsApi {
   pickMaterialsFile: () => Promise<string | null>
   pickOutputDirectory: () => Promise<string | null>
   openFolder: (path: string) => Promise<void>
-  openFile: (path: string) => Promise<void>
+  openFile: (path: string) => Promise<string>
   parseSequences: (
     fastaPath: string,
     materialsPath: string | null

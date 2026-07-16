@@ -16,6 +16,7 @@ interface CycleGuideProps {
 export default function CycleGuide({ onNewSynthesis }: Readonly<CycleGuideProps>): React.JSX.Element {
   const [state, setState] = useState<CycleGuideState>({ status: 'loading' })
   const [cycleIndex, setCycleIndex] = useState(0)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -23,7 +24,7 @@ export default function CycleGuide({ onNewSynthesis }: Readonly<CycleGuideProps>
       .getLastSynthesis()
       .then((envelope) => {
         if (cancelled) return
-        if (envelope.ok && envelope.data?.cycle_guide) {
+        if (envelope.ok && envelope.data?.cycle_guide && envelope.data.cycle_guide.cycles.length > 0) {
           const guide = envelope.data.cycle_guide
           setState({ status: 'loaded', guide, outputPaths: envelope.data.output_paths ?? {} })
           const seeded = (envelope.data.current_cycle ?? 1) - 1
@@ -47,6 +48,14 @@ export default function CycleGuide({ onNewSynthesis }: Readonly<CycleGuideProps>
       // Non-fatal: this is a convenience position marker, not part of the
       // GMP audit trail. Keep the locally-navigated cycle either way.
     })
+  }
+
+  async function handleExport(path: string): Promise<void> {
+    setExportError(null)
+    const result = await window.spps.openFile(path)
+    if (result) {
+      setExportError(result)
+    }
   }
 
   if (state.status === 'loading') {
@@ -83,17 +92,20 @@ export default function CycleGuide({ onNewSynthesis }: Readonly<CycleGuideProps>
           <h1 className="text-text font-sans text-base font-medium">Coupling cycle guide</h1>
           <p className="text-text3 font-mono text-xs">{state.guide.synthesis_name}</p>
         </div>
-        <div className="flex gap-2">
-          {pdfPath && (
-            <Button onClick={() => window.spps.openFile(pdfPath)} className="bg-bg3">
-              ⬇ Export PDF
-            </Button>
-          )}
-          {docxPath && (
-            <Button onClick={() => window.spps.openFile(docxPath)} className="bg-bg3">
-              ⬇ Export DOCX
-            </Button>
-          )}
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex gap-2">
+            {pdfPath && (
+              <Button onClick={() => handleExport(pdfPath)} className="bg-bg3">
+                ⬇ Export PDF
+              </Button>
+            )}
+            {docxPath && (
+              <Button onClick={() => handleExport(docxPath)} className="bg-bg3">
+                ⬇ Export DOCX
+              </Button>
+            )}
+          </div>
+          {exportError && <p className="text-red-500 font-sans text-xs">{exportError}</p>}
         </div>
       </div>
 
@@ -144,8 +156,8 @@ export default function CycleGuide({ onNewSynthesis }: Readonly<CycleGuideProps>
                   </tr>
                 </thead>
                 <tbody>
-                  {cycle.dispatch_rows.map((row) => (
-                    <tr key={row.residue_3letter} className="border-t border-[color:var(--border)]">
+                  {cycle.dispatch_rows.map((row, idx) => (
+                    <tr key={`${row.residue_3letter}-${idx}`} className="border-t border-[color:var(--border)]">
                       <td className="p-2 text-text font-mono">{row.residue_3letter}</td>
                       <td className="p-2 text-teal font-mono">{row.volume_ml.toFixed(2)} mL</td>
                       <td className="p-2">

@@ -101,14 +101,22 @@ describe('registerDialogHandlers', () => {
   it('spps:openFile rejects a path that does not end in .pdf or .docx', async () => {
     existsSyncMock.mockReturnValue(true)
     const result = await ipcMainHandlers['spps:openFile'](null, '/tmp/out/guide.txt')
-    expect(result).toBe('')
+    expect(result).not.toBe('')
+    expect(typeof result).toBe('string')
     expect(openPathMock).not.toHaveBeenCalled()
   })
 
   it('spps:openFile rejects a .pdf path that does not exist on disk', async () => {
     existsSyncMock.mockReturnValue(false)
     const result = await ipcMainHandlers['spps:openFile'](null, '/tmp/out/missing.pdf')
-    expect(result).toBe('')
+    expect(result).not.toBe('')
+    expect(typeof result).toBe('string')
     expect(openPathMock).not.toHaveBeenCalled()
+  })
+
+  it('spps:openFile returns a distinct error string for an invalid path (not the empty-string success sentinel)', async () => {
+    const result = await ipcMainHandlers['spps:openFile'](null, '')
+    expect(result).not.toBe('')
+    expect(typeof result).toBe('string')
   })
 })

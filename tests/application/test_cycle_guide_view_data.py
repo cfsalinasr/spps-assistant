@@ -57,7 +57,7 @@ class TestBuildCycleGuideViewData:
         cycles = build_coupling_cycles([v])
         config = _config()
         result = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
-        assert len(result.cycles) == 3
+        assert len(result.cycles) == len(cycles)
         assert all(isinstance(c, CyclePageData) for c in result.cycles)
 
     def test_cycle_page_numbers_match_coupling_cycles(self):
@@ -65,8 +65,14 @@ class TestBuildCycleGuideViewData:
         cycles = build_coupling_cycles([v])
         config = _config()
         result = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
-        assert [c.cycle_number for c in result.cycles] == [1, 2]
-        assert all(c.total_cycles == 2 for c in result.cycles)
+        assert [c.cycle_number for c in result.cycles] == list(range(1, len(cycles) + 1))
+        assert all(c.total_cycles == len(cycles) for c in result.cycles)
+
+    def test_empty_cycles_returns_empty_view(self):
+        config = _config()
+        result = build_cycle_guide_view_data([], config, {}, '2026-01-01')
+        assert isinstance(result, CycleGuideViewData)
+        assert result.cycles == []
 
     def test_dispatch_row_uses_residue_info_map_values(self):
         v = _vessel(1, 'P1', 'A')

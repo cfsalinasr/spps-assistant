@@ -12,7 +12,7 @@ from docx.oxml import OxmlElement
 
 from spps_assistant.domain.constants import THREE_LETTER_CODE
 from spps_assistant.domain.models import (
-    CouplingCycle, CyclePageData, DispatchRow, GmpStep, SecondaryCouplingRow,
+    CouplingCycle, CycleGuideViewData, CyclePageData, DispatchRow, GmpStep, SecondaryCouplingRow,
     SynthesisConfig, Vessel, VesselAssignment, YieldResult, SolubilityResult
 )
 
@@ -268,12 +268,15 @@ def generate_cycle_guide_docx(
     synthesis_name: str,
     date_str: str,
     vessels: List[Vessel],
-    coupling_cycles: List[CouplingCycle],
+    cycle_guide_data: CycleGuideViewData,
     config: SynthesisConfig,
-    residue_info_map: Dict,
     yield_results: List[YieldResult],
 ) -> None:
-    """Generate a GMP-compliant cycle guide DOCX document."""
+    """Generate a GMP-compliant cycle guide DOCX document.
+
+    cycle_guide_data is precomputed and shared with the PDF exporter and the
+    GUI preview so all three can never drift apart.
+    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -282,14 +285,10 @@ def generate_cycle_guide_docx(
     # Cover
     _build_cover(doc, synthesis_name, date_str, vessels, yield_results)
 
-    from spps_assistant.application.synthesis_guide import build_cycle_guide_view_data
-
-    view_data = build_cycle_guide_view_data(coupling_cycles, config, residue_info_map, date_str)
-
     # Coupling cycle pages
-    for i, cycle_page in enumerate(view_data.cycles):
+    for i, cycle_page in enumerate(cycle_guide_data.cycles):
         _add_cycle_page(doc, cycle_page, config.vessel_label)
-        if i < len(view_data.cycles) - 1:
+        if i < len(cycle_guide_data.cycles) - 1:
             doc.add_page_break()
 
     doc.save(str(path))

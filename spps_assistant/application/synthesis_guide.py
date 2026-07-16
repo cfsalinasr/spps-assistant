@@ -453,9 +453,8 @@ class SynthesisGuideUseCase:
             synthesis_name=config.name,
             date_str=today,
             vessels=vessels,
-            coupling_cycles=coupling_cycles,
+            cycle_guide_data=cycle_guide_data,
             config=config,
-            residue_info_map=residue_info_map,
             yield_results=yield_results,
         )
 
@@ -464,9 +463,8 @@ class SynthesisGuideUseCase:
             synthesis_name=config.name,
             date_str=today,
             vessels=vessels,
-            coupling_cycles=coupling_cycles,
+            cycle_guide_data=cycle_guide_data,
             config=config,
-            residue_info_map=residue_info_map,
             yield_results=yield_results,
         )
 

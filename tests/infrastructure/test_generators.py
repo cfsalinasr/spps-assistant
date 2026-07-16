@@ -10,7 +10,7 @@ from spps_assistant.domain.models import (
 )
 from spps_assistant.domain.sequence import tokenize
 from spps_assistant.domain.solubility import analyze_peptide
-from spps_assistant.application.synthesis_guide import build_coupling_cycles
+from spps_assistant.application.synthesis_guide import build_coupling_cycles, build_cycle_guide_view_data
 from spps_assistant.domain.sequence import token_to_3letter as _pdf_token_3letter
 from spps_assistant.domain.sequence import token_to_3letter as _docx_token_3letter
 from spps_assistant.domain.sequence import build_coupling_label
@@ -167,12 +167,13 @@ class TestGenerateCycleGuidePDF:
         v = _make_vessel(1, 'P1', 'AG')
         config = _make_config()
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide.pdf'
         generate_cycle_guide_pdf(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
         assert path.stat().st_size > 0
@@ -182,12 +183,13 @@ class TestGenerateCycleGuidePDF:
         v = _make_vessel(1, 'P1', 'A')
         config = _make_config(activator='DIC', use_oxyma=True)
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide_dic.pdf'
         generate_cycle_guide_pdf(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 
@@ -196,12 +198,13 @@ class TestGenerateCycleGuidePDF:
         v = _make_vessel(1, 'P1', 'AG')
         config = _make_config(volume_mode='legacy')
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide_legacy.pdf'
         generate_cycle_guide_pdf(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 
@@ -210,12 +213,13 @@ class TestGenerateCycleGuidePDF:
         v = _make_vessel(1, 'P1', 'A')
         config = _make_config(include_bb_test=False)
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide_nobb.pdf'
         generate_cycle_guide_pdf(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 
@@ -311,12 +315,13 @@ class TestGenerateCycleGuideDOCX:
         v = _make_vessel(1, 'P1', 'AG')
         config = _make_config()
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide.docx'
         generate_cycle_guide_docx(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 
@@ -325,12 +330,13 @@ class TestGenerateCycleGuideDOCX:
         v = _make_vessel(1, 'P1', 'A')
         config = _make_config(activator='DIC', use_oxyma=False)
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide_dic.docx'
         generate_cycle_guide_docx(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 
@@ -339,12 +345,13 @@ class TestGenerateCycleGuideDOCX:
         v = _make_vessel(1, 'P1', 'A')
         config = _make_config(include_bb_test=False)
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide_nobb.docx'
         generate_cycle_guide_docx(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 
@@ -353,12 +360,13 @@ class TestGenerateCycleGuideDOCX:
         v = _make_vessel(1, 'P1', 'A')
         config = _make_config(include_kaiser_test=True)
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide_kaiser.docx'
         generate_cycle_guide_docx(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 
@@ -367,12 +375,13 @@ class TestGenerateCycleGuideDOCX:
         v = _make_vessel(1, 'P1', 'AG')
         config = _make_config(volume_mode='legacy')
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide_legacy.docx'
         generate_cycle_guide_docx(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 

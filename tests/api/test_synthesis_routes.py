@@ -530,3 +530,32 @@ def test_set_cycle_position_malformed_cycle_guide_returns_400(app, tmp_path):
     body = resp.get_json()
     assert body['ok'] is False
     assert body['error']['code'] == 'invalid_body'
+
+
+def test_set_cycle_position_non_list_cycles_returns_400(app, tmp_path):
+    """A marker whose 'cycle_guide' is a dict but whose 'cycles' key is not
+    a list (e.g. a corrupted string) must be rejected with a structured 400,
+    not crash inside len()."""
+    import json
+    import spps_assistant.api.routes.synthesis as synthesis_module
+
+    client = app.test_client()
+    out_dir = tmp_path / 'output'
+
+    client.post('/synthesis/generate', json={
+        'vessels': [_vessel_payload(1, 'Pep1', ['A'])],
+        'residue_info_map': {'A': _residue_payload()},
+        'config_overrides': {'name': 'TestRun', 'output_directory': str(out_dir)},
+    })
+
+    marker_path = synthesis_module._MARKER_PATH
+    marker_data = json.loads(marker_path.read_text(encoding='utf-8'))
+    marker_data['cycle_guide']['cycles'] = 'not-a-list'
+    marker_path.write_text(json.dumps(marker_data), encoding='utf-8')
+
+    resp = client.post('/synthesis/cycle-position', json={'cycle_number': 1})
+
+    assert resp.status_code == 400
+    body = resp.get_json()
+    assert body['ok'] is False
+    assert body['error']['code'] == 'invalid_body'

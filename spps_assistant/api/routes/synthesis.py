@@ -184,7 +184,10 @@ def set_cycle_position():
     cycle_guide = marker_data.get('cycle_guide')
     if not isinstance(cycle_guide, dict):
         cycle_guide = {}
-    total_cycles = len(cycle_guide.get('cycles', []))
+    cycles = cycle_guide.get('cycles', [])
+    if not isinstance(cycles, list):
+        return err('invalid_body', 'Synthesis marker has a corrupted cycle guide.'), 400
+    total_cycles = len(cycles)
     if total_cycles == 0 or not (1 <= cycle_number <= total_cycles):
         return err('invalid_body', f'cycle_number must be between 1 and {total_cycles}'), 400
 

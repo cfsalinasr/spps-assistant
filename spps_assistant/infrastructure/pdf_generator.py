@@ -16,7 +16,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from spps_assistant.domain.constants import THREE_LETTER_CODE
 from spps_assistant.domain.models import (
     CouplingCycle, SynthesisConfig, Vessel, YieldResult, SolubilityResult, MaterialsRow,
-    CyclePageData, DispatchRow, GmpStep, VesselAssignment, SecondaryCouplingRow,
+    CyclePageData, CycleGuideViewData, DispatchRow, GmpStep, VesselAssignment, SecondaryCouplingRow,
 )
 
 # ---------------------------------------------------------------------------
@@ -304,9 +304,8 @@ def generate_cycle_guide_pdf(
     synthesis_name: str,
     date_str: str,
     vessels: List[Vessel],
-    coupling_cycles: List[CouplingCycle],
+    cycle_guide_data: CycleGuideViewData,
     config: SynthesisConfig,
-    residue_info_map: Dict,
     yield_results: List[YieldResult],
 ) -> None:
     """Generate a GMP-compliant cycle guide PDF.
@@ -316,9 +315,10 @@ def generate_cycle_guide_pdf(
         synthesis_name: Name of the synthesis run
         date_str: ISO date string
         vessels: List of Vessel objects
-        coupling_cycles: Ordered list of CouplingCycle objects
+        cycle_guide_data: Precomputed cycle guide view data (shared with the
+            DOCX exporter and the GUI preview so all three can never drift
+            apart)
         config: SynthesisConfig parameters
-        residue_info_map: Token -> ResidueInfo map
         yield_results: List of YieldResult per vessel
     """
     path = Path(path)
@@ -340,12 +340,8 @@ def generate_cycle_guide_pdf(
         _build_cover_elements(synthesis_name, date_str, vessels, yield_results)
     )
 
-    from spps_assistant.application.synthesis_guide import build_cycle_guide_view_data
-
-    view_data = build_cycle_guide_view_data(coupling_cycles, config, residue_info_map, date_str)
-
     # One page per coupling cycle
-    for cycle_page in view_data.cycles:
+    for cycle_page in cycle_guide_data.cycles:
         cycle_elems = _build_cycle_page_elements(cycle_page, config.vessel_label)
         # Synthesis name header at top of each cycle page
         header = Paragraph(

@@ -45,15 +45,15 @@ export function registerDialogHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('spps:openFile', (_event, filePath: string) => {
     if (typeof filePath !== 'string' || filePath.length === 0) {
       console.warn('spps:openFile received invalid path:', filePath)
-      return ''
+      return 'Invalid file path.'
     }
     if (!OPENABLE_FILE_EXTENSIONS.has(extname(filePath).toLowerCase())) {
       console.warn('spps:openFile rejected path with disallowed extension:', filePath)
-      return ''
+      return 'Only PDF and DOCX files can be opened.'
     }
     if (!existsSync(filePath)) {
       console.warn('spps:openFile rejected path that does not exist:', filePath)
-      return ''
+      return 'File not found.'
     }
     return shell.openPath(filePath)
   })

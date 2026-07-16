@@ -33,11 +33,13 @@ const READY_STATE: WizardState = {
 function renderStep5(
   state: WizardState,
   onDone = vi.fn(),
-  onViewCycleGuide = vi.fn()
+  onViewCycleGuide = vi.fn(),
+  onViewMaterials = vi.fn()
 ): Omit<RenderResult, 'rerender'> & {
   dispatch: ReturnType<typeof vi.fn>
   onDone: ReturnType<typeof vi.fn>
   onViewCycleGuide: ReturnType<typeof vi.fn>
+  onViewMaterials: ReturnType<typeof vi.fn>
   rerender: (ui: React.ReactElement) => void
   getState: () => WizardState
 } {
@@ -49,6 +51,7 @@ function renderStep5(
       dispatch={dispatch}
       onDone={onDone}
       onViewCycleGuide={onViewCycleGuide}
+      onViewMaterials={onViewMaterials}
     />
   )
 
@@ -60,11 +63,12 @@ function renderStep5(
         dispatch={dispatch}
         onDone={onDone}
         onViewCycleGuide={onViewCycleGuide}
+        onViewMaterials={onViewMaterials}
       />
     )
   })
 
-  return { ...utils, dispatch, onDone, onViewCycleGuide, rerender, getState: () => currentState }
+  return { ...utils, dispatch, onDone, onViewCycleGuide, onViewMaterials, rerender, getState: () => currentState }
 }
 
 describe('Step5Confirm', () => {
@@ -185,5 +189,23 @@ describe('Step5Confirm', () => {
     await user.click(screen.getByRole('button', { name: /view cycle guide/i }))
 
     expect(onViewCycleGuide).toHaveBeenCalledTimes(1)
+  })
+
+  it('clicking "View materials" calls onViewMaterials', async () => {
+    const generateSynthesis = vi.fn().mockResolvedValue({
+      ok: true,
+      data: { materials_xlsx: '/tmp/output/Test_materials.xlsx' }
+    })
+    vi.stubGlobal('spps', { generateSynthesis, pickOutputDirectory: vi.fn(), openFolder: vi.fn() })
+    const user = userEvent.setup()
+
+    const { onViewMaterials } = renderStep5(READY_STATE)
+    await user.click(screen.getByRole('button', { name: /generate/i }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /view materials/i })).toBeInTheDocument()
+    )
+    await user.click(screen.getByRole('button', { name: /view materials/i }))
+
+    expect(onViewMaterials).toHaveBeenCalledTimes(1)
   })
 })

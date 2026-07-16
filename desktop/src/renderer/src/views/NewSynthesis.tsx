@@ -29,11 +29,13 @@ function getStepClassName(status: StepStatus): string {
 interface NewSynthesisProps {
   onDone: () => void
   onViewCycleGuide: () => void
+  onViewMaterials: () => void
 }
 
 export default function NewSynthesis({
   onDone,
-  onViewCycleGuide
+  onViewCycleGuide,
+  onViewMaterials
 }: Readonly<NewSynthesisProps>): React.JSX.Element {
   const [state, dispatch] = useReducer(wizardReducer, initialWizardState)
 
@@ -64,7 +66,13 @@ export default function NewSynthesis({
       {state.step === 3 && <Step3Reagents state={state} dispatch={dispatch} />}
       {state.step === 4 && <Step4Resin state={state} dispatch={dispatch} />}
       {state.step === 5 && (
-        <Step5Confirm state={state} dispatch={dispatch} onDone={onDone} onViewCycleGuide={onViewCycleGuide} />
+        <Step5Confirm
+          state={state}
+          dispatch={dispatch}
+          onDone={onDone}
+          onViewCycleGuide={onViewCycleGuide}
+          onViewMaterials={onViewMaterials}
+        />
       )}
     </div>
   )

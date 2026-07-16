@@ -22,11 +22,13 @@ const CONFIG_FIELDS: Array<{ key: string; label: string }> = [
 interface DashboardProps {
   onNewSynthesis: () => void
   onViewCycleGuide: () => void
+  onViewMaterials: () => void
 }
 
 export default function Dashboard({
   onNewSynthesis,
-  onViewCycleGuide
+  onViewCycleGuide,
+  onViewMaterials
 }: Readonly<DashboardProps>): React.JSX.Element {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [lastSynthesis, setLastSynthesis] = useState<LastSynthesisState>({ status: 'loading' })
@@ -128,9 +130,14 @@ export default function Dashboard({
               <p className="text-text3 font-mono text-xs mb-4">
                 {lastSynthesis.vesselCount} vessel(s) — generated {lastSynthesis.generatedAt}
               </p>
-              <Button onClick={onViewCycleGuide} className="bg-teal text-bg hover:bg-teal/90">
-                View cycle guide
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={onViewCycleGuide} className="bg-teal text-bg hover:bg-teal/90">
+                  View cycle guide
+                </Button>
+                <Button onClick={onViewMaterials} className="bg-teal text-bg hover:bg-teal/90">
+                  View materials
+                </Button>
+              </div>
             </>
           )}
           {lastSynthesis.status === 'none' && (

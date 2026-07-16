@@ -1,4 +1,5 @@
 import type { SidecarInfo } from './sidecar'
+import { recordOutputPaths } from './knownOutputPaths'
 
 const AUTH_HEADER = 'X-SPPS-Sidecar-Token'
 const FETCH_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
@@ -26,6 +27,14 @@ export async function fetchFromSidecar(
   return response.json()
 }
 
+/** Pulls output_paths out of a sidecar envelope, tolerating any shape. */
+function outputPathsFrom(envelope: unknown): unknown {
+  if (!envelope || typeof envelope !== 'object') return undefined
+  const data = (envelope as { data?: unknown }).data
+  if (!data || typeof data !== 'object') return undefined
+  return (data as { output_paths?: unknown }).output_paths
+}
+
 /**
  * Registers the IPC handlers the preload script's window.spps.getConfig()/
  * setConfig() calls invoke. getSidecarInfo is a callback (not a fixed
@@ -48,10 +57,10 @@ export function registerConfigHandlers(
 }
 
 /**
- * Registers the IPC handlers for the synthesis wizard routes:
- * window.spps.parseSequences(), .getResidues(), .saveResidue(),
- * .generateSynthesis(), .getLastSynthesis(). Each delegates to
- * fetchFromSidecar to reach the corresponding backend route.
+ * Registers the IPC handlers for the synthesis wizard and Cycle Guide
+ * routes: window.spps.parseSequences(), .getResidues(), .saveResidue(),
+ * .generateSynthesis(), .getLastSynthesis(), .setCyclePosition(). Each
+ * delegates to fetchFromSidecar to reach the corresponding backend route.
  */
 export function registerSynthesisHandlers(
   ipcMain: Electron.IpcMain,
@@ -75,15 +84,27 @@ export function registerSynthesisHandlers(
     })
   )
 
-  ipcMain.handle('spps:generateSynthesis', (_event, payload: Record<string, unknown>) =>
-    fetchFromSidecar(getSidecarInfo(), '/synthesis/generate', {
+  ipcMain.handle('spps:generateSynthesis', async (_event, payload: Record<string, unknown>) => {
+    const envelope = await fetchFromSidecar(getSidecarInfo(), '/synthesis/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
-  )
+    recordOutputPaths(outputPathsFrom(envelope))
+    return envelope
+  })
 
-  ipcMain.handle('spps:getLastSynthesis', () =>
-    fetchFromSidecar(getSidecarInfo(), '/synthesis/last')
+  ipcMain.handle('spps:getLastSynthesis', async () => {
+    const envelope = await fetchFromSidecar(getSidecarInfo(), '/synthesis/last')
+    recordOutputPaths(outputPathsFrom(envelope))
+    return envelope
+  })
+
+  ipcMain.handle('spps:setCyclePosition', (_event, cycleNumber: number) =>
+    fetchFromSidecar(getSidecarInfo(), '/synthesis/cycle-position', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cycle_number: cycleNumber })
+    })
   )
 }

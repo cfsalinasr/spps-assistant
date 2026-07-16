@@ -14,20 +14,14 @@ from reportlab.platypus import (
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
 from spps_assistant.domain.constants import THREE_LETTER_CODE
-from spps_assistant.domain.sequence import token_to_3letter
 from spps_assistant.domain.models import (
-    CouplingCycle, SynthesisConfig, Vessel, YieldResult, SolubilityResult, MaterialsRow
-)
-from spps_assistant.domain.stoichiometry import (
-    calc_volume_stoichiometry, calc_volume_legacy, calc_mass_mg, format_volume_formula
+    CouplingCycle, SynthesisConfig, Vessel, YieldResult, SolubilityResult, MaterialsRow,
+    CyclePageData, CycleGuideViewData, DispatchRow, GmpStep, VesselAssignment, SecondaryCouplingRow,
 )
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-
-WASH_DURATION = '2 × 1 min'
-COUPLING_DURATION = '30 min'
 
 # ---------------------------------------------------------------------------
 # Styles
@@ -104,27 +98,6 @@ COUPLING_STYLE = TableStyle([
     ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
 ])
 
-
-
-def _build_coupling_label(config: SynthesisConfig, token: str) -> str:
-    """Build activator/coupling label string for GMP table."""
-    three = token_to_3letter(token)
-    act = config.activator
-    base = config.base
-
-    if act in ('DIC', 'DCC'):
-        if config.use_oxyma:
-            return f"{three} + {act} + Oxyma"
-        else:
-            return f"{three} + {act}"
-    else:
-        # HBTU/TBTU/HCTU
-        if config.use_oxyma and base not in ('None', 'none', ''):
-            return f"{three} + {act} + Oxyma + {base}"
-        elif config.use_oxyma:
-            return f"{three} + {act} + Oxyma"
-        else:
-            return f"{three} + {act} + {base}"
 
 
 def _header_paragraph(
@@ -216,88 +189,33 @@ def _build_cover_elements(
 # Cycle page helpers
 # ---------------------------------------------------------------------------
 
-def _build_aa_dispatch_table(
-    cycle: CouplingCycle,
-    config: SynthesisConfig,
-    residue_info_map: Dict,
-) -> Table:
+def _build_aa_dispatch_table(dispatch_rows: List[DispatchRow]) -> Table:
     """Build the AA dispatch table for a coupling cycle page."""
-    from spps_assistant.domain.sequence import parse_token
-
-    # Compute resin_mmol using average resin mass across all vessels
-    total_resin_mmol = 0.0
-    n_vessels = len(cycle.all_vessels)
-    for v in cycle.all_vessels:
-        total_resin_mmol += v.resin_mass_g * v.substitution_mmol_g
-    avg_resin_mmol = total_resin_mmol / n_vessels if n_vessels else 0.03
-
     data = [['Residue (3-letter)', 'Fmoc-MW (g/mol)', 'mmol', 'Volume (mL)', 'Formula', 'Status', 'Vessels']]
 
-    for token, vessel_nums in cycle.residues_at_position.items():
-        three = token_to_3letter(token)
-        n_v = len(vessel_nums)
-
-        if token in residue_info_map:
-            res = residue_info_map[token]
-            fmoc_mw = res.fmoc_mw
-            stock_conc = res.stock_conc
-        else:
-            try:
-                base, _ = parse_token(token)
-            except ValueError:
-                base = 'X'
-            from spps_assistant.domain.constants import FMOC_MW_DEFAULTS
-            fmoc_mw = FMOC_MW_DEFAULTS.get(token, FMOC_MW_DEFAULTS.get(base, 353.4))
-            stock_conc = 0.5
-
-        if config.volume_mode == 'legacy':
-            volume_ml = calc_volume_legacy(n_v)
-            formula_str = f"V = {n_v} × 2 mL"
-        else:
-            volume_ml = calc_volume_stoichiometry(
-                n_v, config.aa_equivalents, avg_resin_mmol, stock_conc
-            )
-            formula_str = format_volume_formula(
-                n_v, config.aa_equivalents, avg_resin_mmol, stock_conc, volume_ml
-            )
-
-        mmol = n_v * config.aa_equivalents * avg_resin_mmol
-        vessels_str = ', '.join(str(vn) for vn in sorted(vessel_nums))
-
+    for row in dispatch_rows:
+        vessels_str = ', '.join(str(vn) for vn in row.vessel_numbers)
         data.append([
-            three,
-            f"{fmoc_mw:.1f}",
-            f"{mmol:.4f}",
-            f"{volume_ml:.3f}",
-            formula_str,
+            row.residue_3letter,
+            f"{row.fmoc_mw:.1f}",
+            f"{row.mmol:.4f}",
+            f"{row.volume_ml:.3f}",
+            row.formula_shown,
             '[ ]',
             vessels_str,
         ])
 
-    col_widths = [2.5 * cm, 2.5 * cm, 1.8 * cm, 2.2 * cm, 7.0 * cm, 1.2 * cm, 2.5 * cm]
+    col_widths = [2.3 * cm, 2.3 * cm, 1.6 * cm, 2.0 * cm, 6.3 * cm, 1.2 * cm, 2.2 * cm]
     table = Table(data, colWidths=col_widths)
     table.setStyle(TABLE_HEADER_STYLE)
     return table
 
 
-def _build_deprotection_table(config: SynthesisConfig) -> Table:
+def _build_deprotection_table(deprotection_steps: List[GmpStep]) -> Table:
     """Build the GMP deprotection steps table."""
     rows = [['[ ]', 'Step', 'Details', 'Time']]
-
-    dep_name = config.deprotection_reagent
-    rows.append(['[ ]', '1. Deprotection', f'{dep_name} in DMF', '2 × 10 min'])
-    rows.append(['[ ]', '2. DMF wash', 'DMF (3×)', '3 × 1 min'])
-
-    if config.include_bb_test:
-        rows.append(['[ ]', '3. Bromophenol Blue test', 'Bromophenol Blue in DMF (1×)', '1 × 2 min'])
-        rows.append(['[ ]', '4. DMF wash', 'DMF (2×)', WASH_DURATION])
-        rows.append(['[ ]', '5. DCM wash', 'DCM (2×)', WASH_DURATION])
-    else:
-        rows.append(['[ ]', '3. DMF wash', 'DMF (2×)', WASH_DURATION])
-        rows.append(['[ ]', '4. DCM wash', 'DCM (2×)', WASH_DURATION])
-
-    if config.include_kaiser_test:
-        rows.append(['[ ]', 'Kaiser test', 'Coupling completeness check', 'As needed'])
+    for step in deprotection_steps:
+        rows.append(['[ ]', step.label, step.detail, step.duration])
 
     col_widths = [1.0 * cm, 4.0 * cm, 8.0 * cm, 3.0 * cm]
     table = Table(rows, colWidths=col_widths)
@@ -305,18 +223,12 @@ def _build_deprotection_table(config: SynthesisConfig) -> Table:
     return table
 
 
-def _build_coupling_table(config: SynthesisConfig, cycle: CouplingCycle) -> Table:
+def _build_coupling_table(coupling_steps: List[GmpStep]) -> Table:
     """Build the GMP coupling steps table."""
-    # Get a representative token for this cycle
-    first_token = next(iter(cycle.residues_at_position), 'AA')
-    coupling_label = _build_coupling_label(config, first_token)
-
     rows = [['[ ]', 'Step', 'Details', 'Time']]
-    rows.append(['[ ]', '1st coupling', coupling_label, COUPLING_DURATION])
-    rows.append(['[ ]', '2nd coupling', f'Repeat: {coupling_label}', COUPLING_DURATION])
-    rows.append(['[ ]', '3rd coupling', f'Repeat: {coupling_label}', COUPLING_DURATION])
-    rows.append(['[ ]', '4th coupling', f'Repeat: {coupling_label}', COUPLING_DURATION])
-    rows.append(['', 'Post-coupling wash', 'DMF (2×1 min), DCM (3×1 min)', '5 min'])
+    for step in coupling_steps:
+        checkbox = '[ ]' if step.n_checkboxes > 0 else ''
+        rows.append([checkbox, step.label, step.detail, step.duration])
 
     col_widths = [1.0 * cm, 3.0 * cm, 10.0 * cm, 2.5 * cm]
     table = Table(rows, colWidths=col_widths)
@@ -324,42 +236,26 @@ def _build_coupling_table(config: SynthesisConfig, cycle: CouplingCycle) -> Tabl
     return table
 
 
-def _build_vessel_assignment_line(cycle: CouplingCycle, config: SynthesisConfig) -> List:
+def _build_vessel_assignment_line(vessel_assignments: List[VesselAssignment], vessel_label: str) -> List:
     """Build vessel assignment text lines for the bottom of a cycle page."""
-    elems = []
-    elems.append(Paragraph("Vessel Assignment:", SECTION_STYLE))
-    for vessel in cycle.all_vessels:
-        idx = cycle.cycle_number - 1
-        if idx < len(vessel.reversed_tokens):
-            tok = vessel.reversed_tokens[idx]
-            three = token_to_3letter(tok)
-            line = (
-                f"{config.vessel_label} <b>{vessel.number}</b> [{vessel.name}]: "
-                f"{three}"
-            )
-        else:
-            line = f"{config.vessel_label} <b>{vessel.number}</b> [{vessel.name}]: OUT"
+    elems = [Paragraph("Vessel Assignment:", SECTION_STYLE)]
+    for va in vessel_assignments:
+        residue = va.residue_3letter if va.residue_3letter is not None else 'OUT'
+        line = f"{vessel_label} <b>{va.vessel_number}</b> [{va.vessel_name}]: {residue}"
         elems.append(Paragraph(line, SMALL_STYLE))
     return elems
 
 
-def _build_secondary_coupling_table(cycle: CouplingCycle, config: SynthesisConfig) -> Optional[Table]:
+def _build_secondary_coupling_table(
+    secondary_coupling_rows: Optional[List[SecondaryCouplingRow]],
+) -> Optional[Table]:
     """Build the secondary coupling verification table (Teabag method only)."""
-    if config.vessel_method != 'Teabag':
+    if secondary_coupling_rows is None:
         return None
 
     rows = [['Vessel #', 'Name', 'Residue', '1st [ ]', '2nd [ ]', '3rd [ ]', '4th [ ]']]
-    for vessel in cycle.all_vessels:
-        idx = cycle.cycle_number - 1
-        if idx < len(vessel.reversed_tokens):
-            tok = vessel.reversed_tokens[idx]
-            three = token_to_3letter(tok)
-        else:
-            three = 'OUT'
-        rows.append([
-            str(vessel.number), vessel.name, three,
-            '[ ]', '[ ]', '[ ]', '[ ]'
-        ])
+    for row in secondary_coupling_rows:
+        rows.append([str(row.vessel_number), row.vessel_name, row.residue_3letter, '[ ]', '[ ]', '[ ]', '[ ]'])
 
     col_widths = [1.5 * cm, 4.0 * cm, 2.5 * cm, 1.5 * cm, 1.5 * cm, 1.5 * cm, 1.5 * cm]
     table = Table(rows, colWidths=col_widths)
@@ -367,41 +263,31 @@ def _build_secondary_coupling_table(cycle: CouplingCycle, config: SynthesisConfi
     return table
 
 
-def _build_cycle_page_elements(
-    cycle: CouplingCycle,
-    config: SynthesisConfig,
-    residue_info_map: Dict,
-) -> List:
+def _build_cycle_page_elements(cycle_page: CyclePageData, vessel_label: str) -> List:
     """Build all flowables for a single coupling cycle page."""
     elems = []
 
-    # Header
-    elems.extend(_header_paragraph('', cycle.cycle_number, cycle.total_cycles))
+    elems.extend(_header_paragraph('', cycle_page.cycle_number, cycle_page.total_cycles))
 
-    # AA dispatch
     elems.append(Paragraph(
-        f"Cycle {cycle.cycle_number} of {cycle.total_cycles} — AA Dispatch",
+        f"Cycle {cycle_page.cycle_number} of {cycle_page.total_cycles} — AA Dispatch",
         SECTION_STYLE
     ))
-    elems.append(_build_aa_dispatch_table(cycle, config, residue_info_map))
+    elems.append(_build_aa_dispatch_table(cycle_page.dispatch_rows))
     elems.append(Spacer(1, 3 * mm))
 
-    # Deprotection
     elems.append(Paragraph("Deprotection", SECTION_STYLE))
-    elems.append(_build_deprotection_table(config))
+    elems.append(_build_deprotection_table(cycle_page.deprotection_steps))
     elems.append(Spacer(1, 3 * mm))
 
-    # Coupling
     elems.append(Paragraph("Coupling", SECTION_STYLE))
-    elems.append(_build_coupling_table(config, cycle))
+    elems.append(_build_coupling_table(cycle_page.coupling_steps))
     elems.append(Spacer(1, 3 * mm))
 
-    # Vessel assignment
-    elems.extend(_build_vessel_assignment_line(cycle, config))
+    elems.extend(_build_vessel_assignment_line(cycle_page.vessel_assignments, vessel_label))
     elems.append(Spacer(1, 3 * mm))
 
-    # Secondary coupling table (Teabag only)
-    sec_table = _build_secondary_coupling_table(cycle, config)
+    sec_table = _build_secondary_coupling_table(cycle_page.secondary_coupling_rows)
     if sec_table is not None:
         elems.append(Paragraph("Secondary Coupling Verification", SECTION_STYLE))
         elems.append(sec_table)
@@ -418,9 +304,8 @@ def generate_cycle_guide_pdf(
     synthesis_name: str,
     date_str: str,
     vessels: List[Vessel],
-    coupling_cycles: List[CouplingCycle],
+    cycle_guide_data: CycleGuideViewData,
     config: SynthesisConfig,
-    residue_info_map: Dict,
     yield_results: List[YieldResult],
 ) -> None:
     """Generate a GMP-compliant cycle guide PDF.
@@ -430,9 +315,10 @@ def generate_cycle_guide_pdf(
         synthesis_name: Name of the synthesis run
         date_str: ISO date string
         vessels: List of Vessel objects
-        coupling_cycles: Ordered list of CouplingCycle objects
+        cycle_guide_data: Precomputed cycle guide view data (shared with the
+            DOCX exporter and the GUI preview so all three can never drift
+            apart)
         config: SynthesisConfig parameters
-        residue_info_map: Token -> ResidueInfo map
         yield_results: List of YieldResult per vessel
     """
     path = Path(path)
@@ -455,11 +341,11 @@ def generate_cycle_guide_pdf(
     )
 
     # One page per coupling cycle
-    for cycle in coupling_cycles:
-        cycle_elems = _build_cycle_page_elements(cycle, config, residue_info_map)
+    for cycle_page in cycle_guide_data.cycles:
+        cycle_elems = _build_cycle_page_elements(cycle_page, config.vessel_label)
         # Synthesis name header at top of each cycle page
         header = Paragraph(
-            f"<b>{synthesis_name}</b>  |  Cycle {cycle.cycle_number}/{cycle.total_cycles}  "
+            f"<b>{synthesis_name}</b>  |  Cycle {cycle_page.cycle_number}/{cycle_page.total_cycles}  "
             f"|  Date: ________________  |  Operator: ________________",
             BODY_STYLE,
         )

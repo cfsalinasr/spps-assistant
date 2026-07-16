@@ -124,7 +124,7 @@ def generate_synthesis():
 
     use_case = SynthesisGuideUseCase(db=db, config_repo=config_repo)
     try:
-        output_paths, cycle_guide_data = use_case.run(
+        output_paths, cycle_guide_data, materials_data = use_case.run(
             output_dir=config.output_directory,
             config=config,
             residue_info_map=residue_info_map,

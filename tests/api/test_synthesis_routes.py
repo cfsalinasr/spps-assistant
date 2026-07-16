@@ -46,6 +46,9 @@ def test_generate_writes_real_output_files(app, tmp_path):
     assert body['ok'] is True
     assert out_dir.exists()
     assert len(list(out_dir.glob('*.pdf'))) >= 1
+    assert len(list(out_dir.glob('*.xlsx'))) >= 1
+    assert 'materials_xlsx' in body['data']
+    assert 'materials_pdf' in body['data']
 
 
 def test_generate_writes_last_synthesis_marker(app, tmp_path):

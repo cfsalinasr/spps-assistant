@@ -89,6 +89,28 @@ export interface CycleGuideData {
   cycles: CyclePageData[]
 }
 
+export interface MaterialsRow {
+  token: string
+  protection: string
+  fmoc_mw: number
+  mmol_needed: number
+  mass_mg: number
+  stock_conc: number
+  volume_ml: number
+  notes: string
+  formula: string
+  volume_ul: number | null
+}
+
+export interface MaterialsViewData {
+  synthesis_name: string
+  rows: MaterialsRow[]
+  total_residue_types: number
+  total_mass_mg: number
+  total_volume_ml: number
+  config_summary: Record<string, string>
+}
+
 export interface CyclePositionEnvelope {
   ok: boolean
   data?: { current_cycle: number }
@@ -105,6 +127,7 @@ export interface LastSynthesisEnvelope {
     output_paths?: Record<string, string>
     current_cycle?: number
     cycle_guide?: CycleGuideData
+    materials?: MaterialsViewData
   } | null
   error?: { code: string; message: string }
 }

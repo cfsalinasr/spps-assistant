@@ -145,6 +145,7 @@ def generate_synthesis():
         'output_paths': output_paths,
         'current_cycle': 1,
         'cycle_guide': asdict(cycle_guide_data),
+        'materials': asdict(materials_data),
     }
 
     try:

@@ -75,6 +75,36 @@ def test_generate_writes_last_synthesis_marker(app, tmp_path):
     assert body['data']['cycle_guide']['synthesis_name'] == 'TestRun'
 
 
+def test_generate_persists_materials_data_in_marker(app, tmp_path):
+    """POST /synthesis/generate must persist a real materials view (rows +
+    summary stats) in the marker, retrievable via GET /synthesis/last."""
+    client = app.test_client()
+    out_dir = tmp_path / 'output'
+
+    resp = client.post('/synthesis/generate', json={
+        'vessels': [_vessel_payload(1, 'Pep1', ['A', 'G'])],
+        'residue_info_map': {
+            'A': _residue_payload(311.3, 71.08),
+            'G': _residue_payload(297.3, 57.05),
+        },
+        'config_overrides': {'name': 'MaterialsTest', 'output_directory': str(out_dir)},
+    })
+
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert 'materials_xlsx' in body['data']
+    assert 'materials_pdf' in body['data']
+
+    last_resp = client.get('/synthesis/last')
+    last_body = last_resp.get_json()
+    materials = last_body['data']['materials']
+    assert materials['synthesis_name'] == 'MaterialsTest'
+    assert materials['total_residue_types'] == 2
+    assert len(materials['rows']) == 2
+    assert materials['rows'][0]['token'] in ('A', 'G')
+    assert isinstance(materials['config_summary'], dict)
+
+
 def test_last_synthesis_returns_null_when_none_generated(app):
     client = app.test_client()
 

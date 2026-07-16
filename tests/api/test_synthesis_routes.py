@@ -65,6 +65,11 @@ def test_generate_writes_last_synthesis_marker(app, tmp_path):
     assert body['ok'] is True
     assert body['data']['name'] == 'TestRun'
     assert body['data']['vessel_count'] == 1
+    assert body['data']['current_cycle'] == 1
+    assert 'cycle_guide_pdf' in body['data']['output_paths']
+    assert 'cycle_guide_docx' in body['data']['output_paths']
+    assert len(body['data']['cycle_guide']['cycles']) == 1
+    assert body['data']['cycle_guide']['synthesis_name'] == 'TestRun'
 
 
 def test_last_synthesis_returns_null_when_none_generated(app):

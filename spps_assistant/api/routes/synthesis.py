@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import tempfile
+from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -103,7 +104,7 @@ def generate_synthesis():
 
     use_case = SynthesisGuideUseCase(db=db, config_repo=config_repo)
     try:
-        output_paths = use_case.run(
+        output_paths, cycle_guide_data = use_case.run(
             output_dir=config.output_directory,
             config=config,
             residue_info_map=residue_info_map,
@@ -121,6 +122,9 @@ def generate_synthesis():
         'output_directory': config.output_directory,
         'generated_at': datetime.now(timezone.utc).isoformat(),
         'vessel_count': len(vessels),
+        'output_paths': output_paths,
+        'current_cycle': 1,
+        'cycle_guide': asdict(cycle_guide_data),
     }
 
     tmp_path = None

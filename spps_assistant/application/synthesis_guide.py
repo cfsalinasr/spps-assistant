@@ -395,7 +395,7 @@ class SynthesisGuideUseCase:
         vessels: List[Vessel],
         yield_results: Optional[List[YieldResult]] = None,
         solubility_results: Optional[Dict] = None,
-    ) -> Dict[str, str]:
+    ) -> Tuple[Dict[str, str], CycleGuideViewData]:
         """Execute the synthesis guide generation workflow.
 
         Steps:
@@ -416,7 +416,11 @@ class SynthesisGuideUseCase:
             solubility_results: Optional pre-computed solubility results to avoid recomputation
 
         Returns:
-            Dict mapping output file types to their paths
+            Tuple of (output_paths, cycle_guide_data). output_paths maps
+            output file types to their paths. cycle_guide_data is the
+            structured per-cycle GMP record data for the GUI's Cycle Guide
+            view — the same data the PDF/DOCX generators render from
+            internally, so the two can never drift apart.
         """
         from spps_assistant.infrastructure.pdf_generator import (
             generate_cycle_guide_pdf, generate_peptide_info_pdf
@@ -436,6 +440,14 @@ class SynthesisGuideUseCase:
         # 2 & 3. Calculate yields and solubility (use pre-computed if provided)
         if yield_results is None or solubility_results is None:
             yield_results, solubility_results = calc_yields_and_solubility(vessels, residue_info_map)
+
+        # Build the shared cycle-guide view data once, from real domain
+        # objects. Both the PDF/DOCX generators below and this method's
+        # return value use this same data — the on-screen preview and the
+        # exported documents can never drift apart.
+        cycle_guide_data = build_cycle_guide_view_data(
+            vessels, coupling_cycles, config, residue_info_map, today
+        )
 
         # 4 & 5. Generate cycle guide (PDF + DOCX)
         safe_name = config.name.replace(' ', '_').replace('/', '-')
@@ -504,4 +516,4 @@ class SynthesisGuideUseCase:
             'cycle_guide_docx': str(cycle_guide_docx),
             'peptide_info_pdf': str(peptide_info_pdf),
             'peptide_info_docx': str(peptide_info_docx),
-        }
+        }, cycle_guide_data

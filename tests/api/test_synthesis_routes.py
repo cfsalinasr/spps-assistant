@@ -348,3 +348,100 @@ def test_generate_marker_write_failure_returns_200(app, tmp_path, monkeypatch):
     assert body['ok'] is True
     assert 'data' in body
     assert len(body['data']) > 0  # output_paths should be present
+
+
+def test_set_cycle_position_updates_marker(app, tmp_path):
+    client = app.test_client()
+    out_dir = tmp_path / 'output'
+
+    client.post('/synthesis/generate', json={
+        'vessels': [_vessel_payload(1, 'Pep1', ['A', 'G'])],
+        'residue_info_map': {
+            'A': _residue_payload(311.3, 71.08),
+            'G': _residue_payload(297.3, 57.05),
+        },
+        'config_overrides': {'name': 'TestRun', 'output_directory': str(out_dir)},
+    })
+
+    resp = client.post('/synthesis/cycle-position', json={'cycle_number': 2})
+
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body['ok'] is True
+    assert body['data']['current_cycle'] == 2
+
+    last = client.get('/synthesis/last').get_json()
+    assert last['data']['current_cycle'] == 2
+
+
+def test_set_cycle_position_out_of_range_returns_400(app, tmp_path):
+    client = app.test_client()
+    out_dir = tmp_path / 'output'
+
+    client.post('/synthesis/generate', json={
+        'vessels': [_vessel_payload(1, 'Pep1', ['A'])],
+        'residue_info_map': {'A': _residue_payload()},
+        'config_overrides': {'name': 'TestRun', 'output_directory': str(out_dir)},
+    })
+
+    resp = client.post('/synthesis/cycle-position', json={'cycle_number': 99})
+
+    assert resp.status_code == 400
+    body = resp.get_json()
+    assert body['ok'] is False
+    assert body['error']['code'] == 'invalid_body'
+
+
+def test_set_cycle_position_zero_returns_400(app, tmp_path):
+    client = app.test_client()
+    out_dir = tmp_path / 'output'
+
+    client.post('/synthesis/generate', json={
+        'vessels': [_vessel_payload(1, 'Pep1', ['A'])],
+        'residue_info_map': {'A': _residue_payload()},
+        'config_overrides': {'name': 'TestRun', 'output_directory': str(out_dir)},
+    })
+
+    resp = client.post('/synthesis/cycle-position', json={'cycle_number': 0})
+
+    assert resp.status_code == 400
+
+
+def test_set_cycle_position_no_synthesis_returns_400(app):
+    client = app.test_client()
+
+    resp = client.post('/synthesis/cycle-position', json={'cycle_number': 1})
+
+    assert resp.status_code == 400
+    body = resp.get_json()
+    assert body['ok'] is False
+    assert body['error']['code'] == 'no_active_synthesis'
+
+
+def test_set_cycle_position_non_integer_returns_400(app, tmp_path):
+    client = app.test_client()
+    out_dir = tmp_path / 'output'
+    client.post('/synthesis/generate', json={
+        'vessels': [_vessel_payload(1, 'Pep1', ['A'])],
+        'residue_info_map': {'A': _residue_payload()},
+        'config_overrides': {'name': 'TestRun', 'output_directory': str(out_dir)},
+    })
+
+    resp = client.post('/synthesis/cycle-position', json={'cycle_number': 'two'})
+
+    assert resp.status_code == 400
+
+
+def test_set_cycle_position_boolean_returns_400(app, tmp_path):
+    """bool is a subclass of int in Python — {"cycle_number": true} must not silently pass."""
+    client = app.test_client()
+    out_dir = tmp_path / 'output'
+    client.post('/synthesis/generate', json={
+        'vessels': [_vessel_payload(1, 'Pep1', ['A'])],
+        'residue_info_map': {'A': _residue_payload()},
+        'config_overrides': {'name': 'TestRun', 'output_directory': str(out_dir)},
+    })
+
+    resp = client.post('/synthesis/cycle-position', json={'cycle_number': True})
+
+    assert resp.status_code == 400

@@ -160,6 +160,57 @@ def generate_synthesis():
     return ok(output_paths)
 
 
+@synthesis_bp.post('/synthesis/cycle-position')
+def set_cycle_position():
+    """Update the persisted current-cycle pointer for the last synthesis.
+
+    This is a convenience position marker only — not part of the GMP
+    audit trail, which lives in the signed, printed PDF/DOCX.
+    """
+    body = request.get_json(silent=True)
+    cycle_number = body.get('cycle_number') if isinstance(body, dict) else None
+    if not isinstance(cycle_number, int) or isinstance(cycle_number, bool):
+        return err('invalid_body', 'Request body must include integer "cycle_number"'), 400
+
+    if not _MARKER_PATH.exists():
+        return err('no_active_synthesis', 'No synthesis has been generated yet.'), 400
+
+    try:
+        marker_data = json.loads(_MARKER_PATH.read_text(encoding='utf-8'))
+    except (json.JSONDecodeError, OSError):
+        logger.exception('Failed to read synthesis marker for cycle-position update')
+        return err('marker_read_failed', 'Could not read the synthesis marker.'), 500
+
+    cycle_guide = marker_data.get('cycle_guide') or {}
+    total_cycles = len(cycle_guide.get('cycles', []))
+    if total_cycles == 0 or not (1 <= cycle_number <= total_cycles):
+        return err('invalid_body', f'cycle_number must be between 1 and {total_cycles}'), 400
+
+    marker_data['current_cycle'] = cycle_number
+
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode='w', dir=_MARKER_PATH.parent, delete=False,
+            encoding='utf-8', suffix='.tmp',
+        ) as tmp_file:
+            tmp_path = tmp_file.name
+            json.dump(marker_data, tmp_file)
+        os.replace(tmp_path, _MARKER_PATH)
+        tmp_path = None
+    except OSError:
+        logger.exception('Failed to write synthesis marker file')
+        return err('marker_write_failed', 'Could not save the cycle position.'), 500
+    finally:
+        if tmp_path is not None:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                logger.warning('Failed to remove temporary synthesis marker file', exc_info=True)
+
+    return ok({'current_cycle': cycle_number})
+
+
 @synthesis_bp.get('/synthesis/last')
 def last_synthesis():
     """Return the most recently generated synthesis's marker data, if any."""

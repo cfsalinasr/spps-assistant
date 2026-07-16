@@ -3,6 +3,7 @@ import Dashboard from './views/Dashboard'
 import NewSynthesis from './views/NewSynthesis'
 import CycleGuide from './views/CycleGuide'
 import Materials from './views/Materials'
+import PeptideInfo from './views/PeptideInfo'
 
 const TABS = ['Dashboard', 'New synthesis', 'Cycle guide', 'Materials', 'Peptide info'] as const
 type Tab = (typeof TABS)[number]
@@ -60,6 +61,7 @@ function App(): React.JSX.Element {
           const enabled =
             tab === 'Dashboard' ||
             tab === 'New synthesis' ||
+            tab === 'Peptide info' ||
             (tab === 'Cycle guide' && cycleGuideEnabled) ||
             (tab === 'Materials' && materialsEnabled)
           const active = tab === activeTab
@@ -96,6 +98,7 @@ function App(): React.JSX.Element {
       {activeTab === 'Materials' && (
         <Materials onNewSynthesis={() => setActiveTab('New synthesis')} />
       )}
+      {activeTab === 'Peptide info' && <PeptideInfo />}
     </div>
   )
 }

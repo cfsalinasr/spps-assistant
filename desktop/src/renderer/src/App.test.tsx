@@ -19,7 +19,7 @@ describe('App', () => {
     vi.unstubAllGlobals()
   })
 
-  it('renders all 5 tabs with only Dashboard and New synthesis enabled', async () => {
+  it('renders all 5 tabs with only Dashboard, New synthesis, and Peptide info enabled', async () => {
     stubSpps()
 
     const { container } = render(<App />)
@@ -28,10 +28,12 @@ describe('App', () => {
     const dashboardTab = nav.getByText('Dashboard')
     expect(dashboardTab.className).toContain('text-teal')
 
-    const newSynthesisTab = nav.getByText('New synthesis')
-    expect(newSynthesisTab.className).not.toContain('cursor-not-allowed')
+    for (const label of ['New synthesis', 'Peptide info']) {
+      const tab = nav.getByText(label)
+      expect(tab.className).not.toContain('cursor-not-allowed')
+    }
 
-    for (const label of ['Cycle guide', 'Materials', 'Peptide info']) {
+    for (const label of ['Cycle guide', 'Materials']) {
       const tab = nav.getByText(label)
       expect(tab.className).toContain('cursor-not-allowed')
     }
@@ -39,6 +41,20 @@ describe('App', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
     )
+  })
+
+  it('clicking the Peptide info tab shows the stub view', async () => {
+    stubSpps()
+    const user = userEvent.setup()
+
+    render(<App />)
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
+    )
+
+    await user.click(screen.getByText('Peptide info'))
+
+    expect(screen.getByText('Coming in a future release.')).toBeInTheDocument()
   })
 
   it('clicking the New synthesis tab switches to the wizard', async () => {

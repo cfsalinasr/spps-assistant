@@ -68,4 +68,32 @@ describe('App', () => {
 
     expect(screen.getByRole('heading', { name: 'New synthesis' })).toBeInTheDocument()
   })
+
+  it('enables the Cycle guide tab once a synthesis exists', async () => {
+    vi.stubGlobal('spps', {
+      getConfig: () => Promise.resolve({ ok: true, data: {} }),
+      setConfig: () => Promise.resolve({ ok: true, data: {} }),
+      getLastSynthesis: () =>
+        Promise.resolve({
+          ok: true,
+          data: {
+            name: 'TestRun',
+            output_directory: '/tmp/out',
+            generated_at: '2026-01-01T00:00:00+00:00',
+            vessel_count: 1,
+            cycle_guide: { synthesis_name: 'TestRun', date_str: '2026-01-01', cycles: [] },
+            current_cycle: 1
+          }
+        }),
+      pickFastaFile: vi.fn().mockResolvedValue(null)
+    })
+
+    const { container } = render(<App />)
+    const nav = within(container.querySelector('nav')!)
+
+    await waitFor(() => {
+      const tab = nav.getByText('Cycle guide')
+      expect(tab.className).not.toContain('cursor-not-allowed')
+    })
+  })
 })

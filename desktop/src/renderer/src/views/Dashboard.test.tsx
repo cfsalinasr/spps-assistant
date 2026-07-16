@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import Dashboard from './Dashboard'
 
@@ -36,7 +37,7 @@ describe('Dashboard', () => {
       })
     )
 
-    render(<Dashboard onNewSynthesis={() => {}} />)
+    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} />)
 
     expect(screen.getByText(/loading configuration/i)).toBeInTheDocument()
 
@@ -54,7 +55,7 @@ describe('Dashboard', () => {
       baseStub({ getConfig: () => Promise.reject(new Error('sidecar unreachable')) })
     )
 
-    render(<Dashboard onNewSynthesis={() => {}} />)
+    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} />)
 
     await waitFor(() => {
       expect(screen.getByText(/couldn.t load configuration/i)).toBeInTheDocument()
@@ -67,7 +68,7 @@ describe('Dashboard', () => {
       baseStub({ getConfig: () => Promise.resolve({ ok: true, data: { activator: 'HBTU' } }) })
     )
 
-    render(<Dashboard onNewSynthesis={() => {}} />)
+    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} />)
 
     await waitFor(() => {
       expect(screen.getByText(/no active synthes/i)).toBeInTheDocument()
@@ -96,12 +97,42 @@ describe('Dashboard', () => {
       })
     )
 
-    render(<Dashboard onNewSynthesis={() => {}} />)
+    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} />)
 
     await waitFor(() => {
       expect(screen.getByText('BatchA')).toBeInTheDocument()
     })
     expect(screen.queryByText(/no active synthes/i)).not.toBeInTheDocument()
+  })
+
+  it('clicking "View cycle guide" on an active synthesis calls onViewCycleGuide', async () => {
+    const onViewCycleGuide = vi.fn()
+    vi.stubGlobal(
+      'spps',
+      baseStub({
+        getConfig: () => Promise.resolve({ ok: true, data: {} }),
+        getLastSynthesis: () =>
+          Promise.resolve({
+            ok: true,
+            data: {
+              name: 'BatchA',
+              output_directory: '/tmp/out',
+              generated_at: '2026-07-13T00:00:00',
+              vessel_count: 2
+            }
+          })
+      })
+    )
+    const user = userEvent.setup()
+
+    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={onViewCycleGuide} />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /view cycle guide/i })).toBeInTheDocument()
+    )
+    await user.click(screen.getByRole('button', { name: /view cycle guide/i }))
+
+    expect(onViewCycleGuide).toHaveBeenCalledTimes(1)
   })
 
   it('shows a loading state for the last synthesis card on initial mount', () => {
@@ -112,7 +143,7 @@ describe('Dashboard', () => {
       })
     )
 
-    render(<Dashboard onNewSynthesis={() => {}} />)
+    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} />)
 
     expect(screen.getByText(/loading…/i)).toBeInTheDocument()
   })

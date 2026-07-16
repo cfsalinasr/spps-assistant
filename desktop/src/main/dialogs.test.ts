@@ -147,4 +147,18 @@ describe('registerDialogHandlers', () => {
     await ipcMainHandlers['spps:openFile'](null, '/tmp/out/guide.pdf')
     expect(openPathMock).toHaveBeenCalledWith('/canonical/known/guide.pdf')
   })
+
+  it('spps:openFile checks existsSync against the resolved (trusted) path, not the raw IPC argument', async () => {
+    resolveKnownOutputPathMock.mockReturnValue('/canonical/known/guide.pdf')
+    await ipcMainHandlers['spps:openFile'](null, '/tmp/out/guide.pdf')
+    expect(existsSyncMock).toHaveBeenCalledWith('/canonical/known/guide.pdf')
+  })
+
+  it('spps:openFile rejects when the resolved path has a disallowed extension, even if the raw IPC argument looked like a PDF', async () => {
+    resolveKnownOutputPathMock.mockReturnValue('/canonical/known/guide.txt')
+    const result = await ipcMainHandlers['spps:openFile'](null, '/tmp/out/guide.pdf')
+    expect(result).not.toBe('')
+    expect(typeof result).toBe('string')
+    expect(openPathMock).not.toHaveBeenCalled()
+  })
 })

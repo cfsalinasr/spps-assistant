@@ -1,7 +1,15 @@
-# SPPS Synthesis Assistant v1.0
+# SPPS Synthesis Assistant
 
-A Python CLI tool for parallel Solid Phase Peptide Synthesis (SPPS) workflow management.
-Replaces the legacy Perl-based Spys.exe with a modern, GMP-compliant, cross-platform CLI.
+A tool for parallel Solid Phase Peptide Synthesis (SPPS) workflow management.
+Replaces the legacy Perl-based Spys.exe with a modern, GMP-compliant, cross-platform tool.
+
+As of v2.0, SPPS Assistant also has a standalone Electron desktop app
+(`desktop/`, built via `packaging/`) — a real installer for scientists who
+don't want a terminal, backed by the same Python business logic described
+below through a local Flask sidecar (`spps_assistant/api/`). Built installers
+are published on this repo's [GitHub Releases](../../releases) page. The
+underlying `spps-assistant` CLI documented in this README is unchanged and
+remains fully supported for scripting/automation.
 
 ## Features
 
@@ -252,7 +260,9 @@ spps-assistant/
 ├── CITATION.cff
 ├── community_mw_library.csv
 ├── spps_assistant/
-│   ├── __init__.py             # version = "1.0.0"
+│   ├── __init__.py             # version = "1.0.0" (CLI/library version;
+│   │                           #   the desktop app is versioned separately
+│   │                           #   in desktop/package.json)
 │   ├── domain/                 # Pure business logic
 │   │   ├── constants.py        # MW tables, hydrophobicity scales
 │   │   ├── models.py           # Dataclasses
@@ -272,6 +282,10 @@ spps-assistant/
 │   │   ├── pdf_generator.py
 │   │   ├── docx_generator.py
 │   │   └── xlsx_generator.py
+│   ├── api/                    # Flask sidecar for the desktop app (v2.0)
+│   │   ├── __main__.py         # `python -m spps_assistant.api` entrypoint
+│   │   ├── app.py
+│   │   └── routes/
 │   └── cli/                    # Click CLI
 │       ├── main.py
 │       ├── prompts.py
@@ -281,14 +295,23 @@ spps-assistant/
 │       ├── template_cmd.py
 │       ├── db_cmd.py
 │       └── config_cmd.py
+├── desktop/                    # Electron + React + TypeScript GUI (v2.0)
+│   ├── src/main/                 # main process: sidecar lifecycle, IPC
+│   ├── src/preload/               # typed window.spps.* bridge
+│   ├── src/renderer/              # React views (Dashboard, New Synthesis,
+│   │                               # Cycle Guide, Materials, Peptide Info)
+│   └── electron-builder.yml       # .dmg / NSIS installer config
+├── packaging/                  # PyInstaller freeze for the sidecar (v2.0)
+│   ├── sidecar_entry.py
+│   └── build_sidecar.sh
+├── launcher/
+│   └── spps_menu.sh            # legacy v1.0 terminal menu (dev-only fallback)
 └── tests/
     ├── domain/
-    │   ├── test_sequence.py
-    │   ├── test_stoichiometry.py
-    │   ├── test_solubility.py
-    │   └── test_yield_calc.py
-    └── infrastructure/
-        └── test_fasta_parser.py
+    ├── application/
+    ├── infrastructure/
+    ├── cli/
+    └── api/
 ```
 
 ## License

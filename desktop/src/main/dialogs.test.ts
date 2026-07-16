@@ -161,4 +161,12 @@ describe('registerDialogHandlers', () => {
     expect(typeof result).toBe('string')
     expect(openPathMock).not.toHaveBeenCalled()
   })
+
+  it('spps:openFile calls shell.openPath with a .xlsx path (materials export)', async () => {
+    resolveKnownOutputPathMock.mockReturnValue('/tmp/out/materials.xlsx')
+    openPathMock.mockResolvedValue('')
+    const result = await ipcMainHandlers['spps:openFile'](null, '/tmp/out/materials.xlsx')
+    expect(openPathMock).toHaveBeenCalledWith('/tmp/out/materials.xlsx')
+    expect(result).toBe('')
+  })
 })

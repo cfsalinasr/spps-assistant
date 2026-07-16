@@ -3,7 +3,7 @@ import { extname } from 'node:path'
 import { dialog, shell, type IpcMain } from 'electron'
 import { resolveKnownOutputPath } from './knownOutputPaths'
 
-const OPENABLE_FILE_EXTENSIONS = new Set(['.pdf', '.docx'])
+const OPENABLE_FILE_EXTENSIONS = new Set(['.pdf', '.docx', '.xlsx'])
 
 /**
  * Registers native file/folder picker IPC handlers used by the New Synthesis
@@ -60,7 +60,7 @@ export function registerDialogHandlers(ipcMain: IpcMain): void {
     }
     if (!OPENABLE_FILE_EXTENSIONS.has(extname(resolvedPath).toLowerCase())) {
       console.warn('spps:openFile rejected path with disallowed extension:', resolvedPath)
-      return 'Only PDF and DOCX files can be opened.'
+      return 'Only PDF, DOCX, and XLSX files can be opened.'
     }
     if (!existsSync(resolvedPath)) {
       console.warn('spps:openFile rejected path that does not exist:', resolvedPath)

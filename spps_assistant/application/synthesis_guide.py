@@ -426,7 +426,12 @@ class SynthesisGuideUseCase:
         )
         from spps_assistant.infrastructure.xlsx_generator import generate_materials_xlsx
 
-        out_path = Path(output_dir)
+        # Resolve to an absolute path: output_dir is frequently a relative
+        # default (e.g. 'spps_output'), and the returned output_paths are
+        # consumed by the Electron main process, whose own cwd differs from
+        # this sidecar process's cwd — a relative path here would silently
+        # fail existsSync()/shell.openPath() checks on the Electron side.
+        out_path = Path(output_dir).resolve()
         out_path.mkdir(parents=True, exist_ok=True)
 
         today = date.today().isoformat()

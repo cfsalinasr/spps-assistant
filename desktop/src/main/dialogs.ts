@@ -1,4 +1,9 @@
+import { existsSync } from 'node:fs'
+import { extname } from 'node:path'
 import { dialog, shell, type IpcMain } from 'electron'
+import { resolveKnownOutputPath } from './knownOutputPaths'
+
+const OPENABLE_FILE_EXTENSIONS = new Set(['.pdf', '.docx'])
 
 /**
  * Registers native file/folder picker IPC handlers used by the New Synthesis
@@ -36,5 +41,31 @@ export function registerDialogHandlers(ipcMain: IpcMain): void {
       return
     }
     shell.showItemInFolder(folderPath)
+  })
+
+  ipcMain.handle('spps:openFile', (_event, filePath: string) => {
+    if (typeof filePath !== 'string' || filePath.length === 0) {
+      console.warn('spps:openFile received invalid path:', filePath)
+      return 'Invalid file path.'
+    }
+    // The renderer's argument is never trusted on its own, and its string
+    // value never reaches shell.openPath directly — it must match a path
+    // the main process itself already learned about from a sidecar
+    // response (see knownOutputPaths.ts), and the sink is fed that trusted
+    // stored value, not the caller's own argument.
+    const resolvedPath = resolveKnownOutputPath(filePath)
+    if (resolvedPath === undefined) {
+      console.warn('spps:openFile rejected path outside the known output paths:', filePath)
+      return 'File not found.'
+    }
+    if (!OPENABLE_FILE_EXTENSIONS.has(extname(resolvedPath).toLowerCase())) {
+      console.warn('spps:openFile rejected path with disallowed extension:', resolvedPath)
+      return 'Only PDF and DOCX files can be opened.'
+    }
+    if (!existsSync(resolvedPath)) {
+      console.warn('spps:openFile rejected path that does not exist:', resolvedPath)
+      return 'File not found.'
+    }
+    return shell.openPath(resolvedPath)
   })
 }

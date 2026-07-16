@@ -99,3 +99,53 @@ class MaterialsRow:
     notes: str = ''
     formula: str = ''
     volume_ul: Optional[float] = None   # set for liquid reagents; shows instead of mass_mg
+
+
+@dataclass
+class DispatchRow:
+    residue_3letter: str
+    fmoc_mw: float
+    mmol: float
+    volume_ml: float
+    formula_shown: str
+    vessel_numbers: List[int]
+
+
+@dataclass
+class GmpStep:
+    label: str
+    detail: str
+    n_checkboxes: int
+    duration: str
+
+
+@dataclass
+class VesselAssignment:
+    vessel_number: int
+    vessel_name: str
+    residue_3letter: Optional[str]   # None means this vessel is OUT at this cycle
+
+
+@dataclass
+class SecondaryCouplingRow:
+    vessel_number: int
+    vessel_name: str
+    residue_3letter: str
+
+
+@dataclass
+class CyclePageData:
+    cycle_number: int
+    total_cycles: int
+    dispatch_rows: List[DispatchRow]
+    deprotection_steps: List[GmpStep]
+    coupling_steps: List[GmpStep]
+    vessel_assignments: List[VesselAssignment]
+    secondary_coupling_rows: Optional[List[SecondaryCouplingRow]]   # None unless Teabag method
+
+
+@dataclass
+class CycleGuideViewData:
+    synthesis_name: str
+    date_str: str
+    cycles: List[CyclePageData]

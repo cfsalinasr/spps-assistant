@@ -32,25 +32,39 @@ const READY_STATE: WizardState = {
 
 function renderStep5(
   state: WizardState,
-  onDone = vi.fn()
+  onDone = vi.fn(),
+  onViewCycleGuide = vi.fn()
 ): Omit<RenderResult, 'rerender'> & {
   dispatch: ReturnType<typeof vi.fn>
   onDone: ReturnType<typeof vi.fn>
+  onViewCycleGuide: ReturnType<typeof vi.fn>
   rerender: (ui: React.ReactElement) => void
   getState: () => WizardState
 } {
   let currentState = state
   const dispatch = vi.fn()
   const { rerender, ...utils } = render(
-    <Step5Confirm state={currentState} dispatch={dispatch} onDone={onDone} />
+    <Step5Confirm
+      state={currentState}
+      dispatch={dispatch}
+      onDone={onDone}
+      onViewCycleGuide={onViewCycleGuide}
+    />
   )
 
   dispatch.mockImplementation((action: WizardAction) => {
     currentState = wizardReducer(currentState, action)
-    rerender(<Step5Confirm state={currentState} dispatch={dispatch} onDone={onDone} />)
+    rerender(
+      <Step5Confirm
+        state={currentState}
+        dispatch={dispatch}
+        onDone={onDone}
+        onViewCycleGuide={onViewCycleGuide}
+      />
+    )
   })
 
-  return { ...utils, dispatch, onDone, rerender, getState: () => currentState }
+  return { ...utils, dispatch, onDone, onViewCycleGuide, rerender, getState: () => currentState }
 }
 
 describe('Step5Confirm', () => {
@@ -153,5 +167,23 @@ describe('Step5Confirm', () => {
     await waitFor(() => expect(screen.getByText(/sidecar crashed/i)).toBeInTheDocument())
     // Generate button should be re-enabled
     expect(screen.getByRole('button', { name: /generate/i })).not.toBeDisabled()
+  })
+
+  it('clicking "View cycle guide" calls onViewCycleGuide', async () => {
+    const generateSynthesis = vi.fn().mockResolvedValue({
+      ok: true,
+      data: { cycle_guide_pdf: '/tmp/output/Test_cycle_guide.pdf' }
+    })
+    vi.stubGlobal('spps', { generateSynthesis, pickOutputDirectory: vi.fn(), openFolder: vi.fn() })
+    const user = userEvent.setup()
+
+    const { onViewCycleGuide } = renderStep5(READY_STATE)
+    await user.click(screen.getByRole('button', { name: /generate/i }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /view cycle guide/i })).toBeInTheDocument()
+    )
+    await user.click(screen.getByRole('button', { name: /view cycle guide/i }))
+
+    expect(onViewCycleGuide).toHaveBeenCalledTimes(1)
   })
 })

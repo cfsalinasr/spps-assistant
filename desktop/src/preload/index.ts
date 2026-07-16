@@ -11,6 +11,7 @@ const spps = {
   pickMaterialsFile: () => ipcRenderer.invoke('spps:pickMaterialsFile'),
   pickOutputDirectory: () => ipcRenderer.invoke('spps:pickOutputDirectory'),
   openFolder: (path: string) => ipcRenderer.invoke('spps:openFolder', path),
+  openFile: (path: string) => ipcRenderer.invoke('spps:openFile', path),
   parseSequences: (fastaPath: string, materialsPath: string | null) =>
     ipcRenderer.invoke('spps:parseSequences', fastaPath, materialsPath),
   getResidues: () => ipcRenderer.invoke('spps:getResidues'),
@@ -18,7 +19,8 @@ const spps = {
     ipcRenderer.invoke('spps:saveResidue', residue),
   generateSynthesis: (payload: Record<string, unknown>) =>
     ipcRenderer.invoke('spps:generateSynthesis', payload),
-  getLastSynthesis: () => ipcRenderer.invoke('spps:getLastSynthesis')
+  getLastSynthesis: () => ipcRenderer.invoke('spps:getLastSynthesis'),
+  setCyclePosition: (cycleNumber: number) => ipcRenderer.invoke('spps:setCyclePosition', cycleNumber)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

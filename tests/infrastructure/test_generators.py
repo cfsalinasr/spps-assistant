@@ -10,19 +10,18 @@ from spps_assistant.domain.models import (
 )
 from spps_assistant.domain.sequence import tokenize
 from spps_assistant.domain.solubility import analyze_peptide
-from spps_assistant.application.synthesis_guide import build_coupling_cycles
+from spps_assistant.application.synthesis_guide import build_coupling_cycles, build_cycle_guide_view_data
 from spps_assistant.domain.sequence import token_to_3letter as _pdf_token_3letter
 from spps_assistant.domain.sequence import token_to_3letter as _docx_token_3letter
+from spps_assistant.domain.sequence import build_coupling_label
 from spps_assistant.infrastructure.pdf_generator import (
     generate_cycle_guide_pdf,
     generate_peptide_info_pdf,
     generate_materials_pdf,
-    _build_coupling_label as _pdf_coupling_label,
 )
 from spps_assistant.infrastructure.docx_generator import (
     generate_cycle_guide_docx,
     generate_peptide_info_docx,
-    _build_coupling_label as _docx_coupling_label,
 )
 
 
@@ -114,69 +113,50 @@ class TestTokenTo3Letter:
 # ── _build_coupling_label ──────────────────────────────────────────────────────
 
 class TestBuildCouplingLabel:
-    def test_pdf_hbtu_with_oxyma_and_base(self):
-        """PDF coupling label includes HBTU, Oxyma, and DIEA."""
+    def test_hbtu_with_oxyma_and_base(self):
+        """Coupling label includes HBTU, Oxyma, and DIEA."""
         config = _make_config(activator='HBTU', use_oxyma=True, base='DIEA')
-        label = _pdf_coupling_label(config, 'A')
+        label = build_coupling_label(config, 'A')
         assert 'HBTU' in label
         assert 'Oxyma' in label
         assert 'DIEA' in label
 
-    def test_pdf_hbtu_with_oxyma_no_base(self):
-        """PDF coupling label omits 'None' when base is 'None'."""
+    def test_hbtu_with_oxyma_no_base(self):
+        """Coupling label omits 'None' when base is 'None'."""
         config = _make_config(activator='HBTU', use_oxyma=True, base='None')
-        label = _pdf_coupling_label(config, 'A')
+        label = build_coupling_label(config, 'A')
         assert 'HBTU' in label
         assert 'Oxyma' in label
         assert 'None' not in label
 
-    def test_pdf_hbtu_no_oxyma(self):
-        """PDF coupling label omits Oxyma when use_oxyma is False."""
+    def test_hbtu_no_oxyma(self):
+        """Coupling label omits Oxyma when use_oxyma is False."""
         config = _make_config(activator='HBTU', use_oxyma=False, base='DIEA')
-        label = _pdf_coupling_label(config, 'A')
+        label = build_coupling_label(config, 'A')
         assert 'HBTU' in label
         assert 'Oxyma' not in label
 
-    def test_pdf_dic_with_oxyma(self):
-        """PDF label includes DIC and Oxyma."""
+    def test_dic_with_oxyma(self):
+        """Label includes DIC and Oxyma."""
         config = _make_config(activator='DIC', use_oxyma=True)
-        label = _pdf_coupling_label(config, 'A')
+        label = build_coupling_label(config, 'A')
         assert 'DIC' in label
         assert 'Oxyma' in label
 
-    def test_pdf_dic_without_oxyma(self):
-        """PDF label includes DIC but not Oxyma."""
+    def test_dic_without_oxyma(self):
+        """Label includes DIC but not Oxyma."""
         config = _make_config(activator='DIC', use_oxyma=False)
-        label = _pdf_coupling_label(config, 'A')
+        label = build_coupling_label(config, 'A')
         assert 'DIC' in label
         assert 'Oxyma' not in label
 
-    def test_docx_dic_with_oxyma(self):
-        """DOCX label includes DIC and Oxyma."""
-        config = _make_config(activator='DIC', use_oxyma=True)
-        label = _docx_coupling_label(config, 'A')
-        assert 'DIC' in label
-        assert 'Oxyma' in label
-
-    def test_docx_dic_without_oxyma(self):
-        """DOCX label includes DIC but not Oxyma."""
-        config = _make_config(activator='DIC', use_oxyma=False)
-        label = _docx_coupling_label(config, 'A')
-        assert 'DIC' in label
-        assert 'Oxyma' not in label
-
-    def test_docx_hbtu_no_oxyma(self):
-        """DOCX HBTU label without Oxyma."""
-        config = _make_config(activator='HBTU', use_oxyma=False, base='DIEA')
-        label = _docx_coupling_label(config, 'A')
+    def test_hbtu_no_oxyma_sentinel_base_omitted(self):
+        """Label omits the sentinel base value 'None' even when use_oxyma is False."""
+        config = _make_config(activator='HBTU', use_oxyma=False, base='None')
+        label = build_coupling_label(config, 'A')
         assert 'HBTU' in label
         assert 'Oxyma' not in label
-
-    def test_docx_hbtu_oxyma_no_base(self):
-        """DOCX HBTU label includes Oxyma even without a base."""
-        config = _make_config(activator='HBTU', use_oxyma=True, base='None')
-        label = _docx_coupling_label(config, 'A')
-        assert 'Oxyma' in label
+        assert 'None' not in label
 
 
 # ── generate_cycle_guide_pdf ──────────────────────────────────────────────────
@@ -187,12 +167,13 @@ class TestGenerateCycleGuidePDF:
         v = _make_vessel(1, 'P1', 'AG')
         config = _make_config()
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide.pdf'
         generate_cycle_guide_pdf(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
         assert path.stat().st_size > 0
@@ -202,12 +183,13 @@ class TestGenerateCycleGuidePDF:
         v = _make_vessel(1, 'P1', 'A')
         config = _make_config(activator='DIC', use_oxyma=True)
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide_dic.pdf'
         generate_cycle_guide_pdf(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 
@@ -216,12 +198,13 @@ class TestGenerateCycleGuidePDF:
         v = _make_vessel(1, 'P1', 'AG')
         config = _make_config(volume_mode='legacy')
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide_legacy.pdf'
         generate_cycle_guide_pdf(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 
@@ -230,12 +213,13 @@ class TestGenerateCycleGuidePDF:
         v = _make_vessel(1, 'P1', 'A')
         config = _make_config(include_bb_test=False)
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide_nobb.pdf'
         generate_cycle_guide_pdf(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 
@@ -331,12 +315,13 @@ class TestGenerateCycleGuideDOCX:
         v = _make_vessel(1, 'P1', 'AG')
         config = _make_config()
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide.docx'
         generate_cycle_guide_docx(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 
@@ -345,12 +330,13 @@ class TestGenerateCycleGuideDOCX:
         v = _make_vessel(1, 'P1', 'A')
         config = _make_config(activator='DIC', use_oxyma=False)
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide_dic.docx'
         generate_cycle_guide_docx(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 
@@ -359,12 +345,13 @@ class TestGenerateCycleGuideDOCX:
         v = _make_vessel(1, 'P1', 'A')
         config = _make_config(include_bb_test=False)
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide_nobb.docx'
         generate_cycle_guide_docx(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 
@@ -373,12 +360,13 @@ class TestGenerateCycleGuideDOCX:
         v = _make_vessel(1, 'P1', 'A')
         config = _make_config(include_kaiser_test=True)
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide_kaiser.docx'
         generate_cycle_guide_docx(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 
@@ -387,12 +375,13 @@ class TestGenerateCycleGuideDOCX:
         v = _make_vessel(1, 'P1', 'AG')
         config = _make_config(volume_mode='legacy')
         cycles = build_coupling_cycles([v])
+        cycle_guide_data = build_cycle_guide_view_data(cycles, config, {}, '2026-01-01')
         yr = _make_yield(v)
         path = tmp_path / 'guide_legacy.docx'
         generate_cycle_guide_docx(
             path=path, synthesis_name='T', date_str='2026-01-01',
-            vessels=[v], coupling_cycles=cycles, config=config,
-            residue_info_map={}, yield_results=[yr],
+            vessels=[v], cycle_guide_data=cycle_guide_data, config=config,
+            yield_results=[yr],
         )
         assert path.exists()
 

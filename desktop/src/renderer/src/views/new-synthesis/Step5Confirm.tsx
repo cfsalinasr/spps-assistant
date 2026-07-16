@@ -7,12 +7,14 @@ interface Step5Props {
   state: WizardState
   dispatch: Dispatch<WizardAction>
   onDone: () => void
+  onViewCycleGuide: () => void
 }
 
 export default function Step5Confirm({
   state,
   dispatch,
-  onDone
+  onDone,
+  onViewCycleGuide
 }: Readonly<Step5Props>): React.JSX.Element {
   async function handleGenerate(): Promise<void> {
     try {
@@ -86,6 +88,9 @@ export default function Step5Confirm({
                 Open folder
               </Button>
             )}
+            <Button onClick={onViewCycleGuide} className="bg-bg3">
+              View cycle guide
+            </Button>
             <Button onClick={onDone} className="bg-teal text-bg hover:bg-teal/90">
               Done
             </Button>

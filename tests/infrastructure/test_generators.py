@@ -13,16 +13,15 @@ from spps_assistant.domain.solubility import analyze_peptide
 from spps_assistant.application.synthesis_guide import build_coupling_cycles
 from spps_assistant.domain.sequence import token_to_3letter as _pdf_token_3letter
 from spps_assistant.domain.sequence import token_to_3letter as _docx_token_3letter
+from spps_assistant.domain.sequence import build_coupling_label
 from spps_assistant.infrastructure.pdf_generator import (
     generate_cycle_guide_pdf,
     generate_peptide_info_pdf,
     generate_materials_pdf,
-    _build_coupling_label as _pdf_coupling_label,
 )
 from spps_assistant.infrastructure.docx_generator import (
     generate_cycle_guide_docx,
     generate_peptide_info_docx,
-    _build_coupling_label as _docx_coupling_label,
 )
 
 
@@ -114,69 +113,42 @@ class TestTokenTo3Letter:
 # ── _build_coupling_label ──────────────────────────────────────────────────────
 
 class TestBuildCouplingLabel:
-    def test_pdf_hbtu_with_oxyma_and_base(self):
-        """PDF coupling label includes HBTU, Oxyma, and DIEA."""
+    def test_hbtu_with_oxyma_and_base(self):
+        """Coupling label includes HBTU, Oxyma, and DIEA."""
         config = _make_config(activator='HBTU', use_oxyma=True, base='DIEA')
-        label = _pdf_coupling_label(config, 'A')
+        label = build_coupling_label(config, 'A')
         assert 'HBTU' in label
         assert 'Oxyma' in label
         assert 'DIEA' in label
 
-    def test_pdf_hbtu_with_oxyma_no_base(self):
-        """PDF coupling label omits 'None' when base is 'None'."""
+    def test_hbtu_with_oxyma_no_base(self):
+        """Coupling label omits 'None' when base is 'None'."""
         config = _make_config(activator='HBTU', use_oxyma=True, base='None')
-        label = _pdf_coupling_label(config, 'A')
+        label = build_coupling_label(config, 'A')
         assert 'HBTU' in label
         assert 'Oxyma' in label
         assert 'None' not in label
 
-    def test_pdf_hbtu_no_oxyma(self):
-        """PDF coupling label omits Oxyma when use_oxyma is False."""
+    def test_hbtu_no_oxyma(self):
+        """Coupling label omits Oxyma when use_oxyma is False."""
         config = _make_config(activator='HBTU', use_oxyma=False, base='DIEA')
-        label = _pdf_coupling_label(config, 'A')
+        label = build_coupling_label(config, 'A')
         assert 'HBTU' in label
         assert 'Oxyma' not in label
 
-    def test_pdf_dic_with_oxyma(self):
-        """PDF label includes DIC and Oxyma."""
+    def test_dic_with_oxyma(self):
+        """Label includes DIC and Oxyma."""
         config = _make_config(activator='DIC', use_oxyma=True)
-        label = _pdf_coupling_label(config, 'A')
+        label = build_coupling_label(config, 'A')
         assert 'DIC' in label
         assert 'Oxyma' in label
 
-    def test_pdf_dic_without_oxyma(self):
-        """PDF label includes DIC but not Oxyma."""
+    def test_dic_without_oxyma(self):
+        """Label includes DIC but not Oxyma."""
         config = _make_config(activator='DIC', use_oxyma=False)
-        label = _pdf_coupling_label(config, 'A')
+        label = build_coupling_label(config, 'A')
         assert 'DIC' in label
         assert 'Oxyma' not in label
-
-    def test_docx_dic_with_oxyma(self):
-        """DOCX label includes DIC and Oxyma."""
-        config = _make_config(activator='DIC', use_oxyma=True)
-        label = _docx_coupling_label(config, 'A')
-        assert 'DIC' in label
-        assert 'Oxyma' in label
-
-    def test_docx_dic_without_oxyma(self):
-        """DOCX label includes DIC but not Oxyma."""
-        config = _make_config(activator='DIC', use_oxyma=False)
-        label = _docx_coupling_label(config, 'A')
-        assert 'DIC' in label
-        assert 'Oxyma' not in label
-
-    def test_docx_hbtu_no_oxyma(self):
-        """DOCX HBTU label without Oxyma."""
-        config = _make_config(activator='HBTU', use_oxyma=False, base='DIEA')
-        label = _docx_coupling_label(config, 'A')
-        assert 'HBTU' in label
-        assert 'Oxyma' not in label
-
-    def test_docx_hbtu_oxyma_no_base(self):
-        """DOCX HBTU label includes Oxyma even without a base."""
-        config = _make_config(activator='HBTU', use_oxyma=True, base='None')
-        label = _docx_coupling_label(config, 'A')
-        assert 'Oxyma' in label
 
 
 # ── generate_cycle_guide_pdf ──────────────────────────────────────────────────

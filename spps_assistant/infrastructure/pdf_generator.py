@@ -14,7 +14,7 @@ from reportlab.platypus import (
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
 from spps_assistant.domain.constants import THREE_LETTER_CODE
-from spps_assistant.domain.sequence import token_to_3letter
+from spps_assistant.domain.sequence import build_coupling_label, token_to_3letter
 from spps_assistant.domain.models import (
     CouplingCycle, SynthesisConfig, Vessel, YieldResult, SolubilityResult, MaterialsRow
 )
@@ -104,27 +104,6 @@ COUPLING_STYLE = TableStyle([
     ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
 ])
 
-
-
-def _build_coupling_label(config: SynthesisConfig, token: str) -> str:
-    """Build activator/coupling label string for GMP table."""
-    three = token_to_3letter(token)
-    act = config.activator
-    base = config.base
-
-    if act in ('DIC', 'DCC'):
-        if config.use_oxyma:
-            return f"{three} + {act} + Oxyma"
-        else:
-            return f"{three} + {act}"
-    else:
-        # HBTU/TBTU/HCTU
-        if config.use_oxyma and base not in ('None', 'none', ''):
-            return f"{three} + {act} + Oxyma + {base}"
-        elif config.use_oxyma:
-            return f"{three} + {act} + Oxyma"
-        else:
-            return f"{three} + {act} + {base}"
 
 
 def _header_paragraph(
@@ -309,7 +288,7 @@ def _build_coupling_table(config: SynthesisConfig, cycle: CouplingCycle) -> Tabl
     """Build the GMP coupling steps table."""
     # Get a representative token for this cycle
     first_token = next(iter(cycle.residues_at_position), 'AA')
-    coupling_label = _build_coupling_label(config, first_token)
+    coupling_label = build_coupling_label(config, first_token)
 
     rows = [['[ ]', 'Step', 'Details', 'Time']]
     rows.append(['[ ]', '1st coupling', coupling_label, COUPLING_DURATION])

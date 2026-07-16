@@ -11,7 +11,7 @@ from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
 from spps_assistant.domain.constants import THREE_LETTER_CODE
-from spps_assistant.domain.sequence import token_to_3letter
+from spps_assistant.domain.sequence import build_coupling_label, token_to_3letter
 from spps_assistant.domain.models import (
     CouplingCycle, SynthesisConfig, Vessel, YieldResult, SolubilityResult
 )
@@ -133,23 +133,6 @@ def _add_heading(doc: Document, text: str, level: int = 1) -> None:
     run = para.runs[0] if para.runs else para.add_run(text)
     run.bold = True
     run.font.size = Pt(14 - level * 2)
-
-
-def _build_coupling_label(config: SynthesisConfig, token: str) -> str:
-    """Build coupling label for DOCX table."""
-    three = token_to_3letter(token)
-    act = config.activator
-    base = config.base
-    if act in ('DIC', 'DCC'):
-        if config.use_oxyma:
-            return f"{three} + {act} + Oxyma"
-        return f"{three} + {act}"
-    else:
-        if config.use_oxyma and base not in ('None', 'none', ''):
-            return f"{three} + {act} + Oxyma + {base}"
-        elif config.use_oxyma:
-            return f"{three} + {act} + Oxyma"
-        return f"{three} + {act} + {base}"
 
 
 # ---------------------------------------------------------------------------
@@ -331,7 +314,7 @@ def _add_cycle_page(doc: Document, cycle: CouplingCycle,
     # Coupling table
     doc.add_heading('Coupling', 3)
     first_token = next(iter(cycle.residues_at_position), 'AA')
-    coupling_label = _build_coupling_label(config, first_token)
+    coupling_label = build_coupling_label(config, first_token)
 
     coup_data = [['[ ]', 'Step', 'Details', 'Time']]
     coup_data.append(['[ ]', '1st coupling', coupling_label, COUPLING_DURATION])

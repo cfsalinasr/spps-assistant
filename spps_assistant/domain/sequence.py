@@ -4,6 +4,7 @@ import re
 from typing import List, Tuple
 
 from spps_assistant.domain.constants import THREE_LETTER_CODE
+from spps_assistant.domain.models import SynthesisConfig
 
 # Matches a single letter optionally followed by a parenthesized group, e.g. C(Trt)
 TOKEN_RE = re.compile(r'[A-Za-z](?:\([^)]+\))?')
@@ -86,6 +87,27 @@ def token_to_3letter(token: str) -> str:
         return token
     three = THREE_LETTER_CODE.get(base, base)
     return f"{three}({prot})" if prot else three
+
+
+def build_coupling_label(config: SynthesisConfig, token: str) -> str:
+    """Build the coupling reagent label shown in the GMP coupling record.
+
+    E.g. "Ala + HBTU + Oxyma + DIEA" or "Ala + DIC + Oxyma".
+    """
+    three = token_to_3letter(token)
+    act = config.activator
+    base = config.base
+
+    if act in ('DIC', 'DCC'):
+        if config.use_oxyma:
+            return f"{three} + {act} + Oxyma"
+        return f"{three} + {act}"
+    else:
+        if config.use_oxyma and base not in ('None', 'none', ''):
+            return f"{three} + {act} + Oxyma + {base}"
+        elif config.use_oxyma:
+            return f"{three} + {act} + Oxyma"
+        return f"{three} + {act} + {base}"
 
 
 def get_unique_tokens(vessels) -> List[str]:

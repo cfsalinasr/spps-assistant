@@ -20,3 +20,16 @@ export function recordOutputPaths(outputPaths: unknown): void {
 export function isKnownOutputPath(path: string): boolean {
   return knownOutputPaths.has(path)
 }
+
+/**
+ * Looks up a requested path against the known-good set and, on a match,
+ * returns the trusted stored value rather than the caller's own string —
+ * so a filesystem sink downstream is always fed a value that originated
+ * from this module's own recorded state, not from the caller's argument.
+ */
+export function resolveKnownOutputPath(path: string): string | undefined {
+  for (const known of knownOutputPaths) {
+    if (known === path) return known
+  }
+  return undefined
+}

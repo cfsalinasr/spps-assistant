@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isKnownOutputPath, recordOutputPaths } from './knownOutputPaths'
+import { isKnownOutputPath, recordOutputPaths, resolveKnownOutputPath } from './knownOutputPaths'
 
 describe('knownOutputPaths', () => {
   it('a path is unknown before it has ever been recorded', () => {
@@ -36,5 +36,14 @@ describe('knownOutputPaths', () => {
   it('a path recorded for one key is not confused with an unrelated path', () => {
     recordOutputPaths({ some_path: '/tmp/out/known2.pdf' })
     expect(isKnownOutputPath('/tmp/out/unrelated.pdf')).toBe(false)
+  })
+
+  it('resolveKnownOutputPath returns undefined for a path that was never recorded', () => {
+    expect(resolveKnownOutputPath('/tmp/never-recorded-2.pdf')).toBeUndefined()
+  })
+
+  it('resolveKnownOutputPath returns the matching stored value for a recorded path', () => {
+    recordOutputPaths({ cycle_guide_pdf: '/tmp/out/known3.pdf' })
+    expect(resolveKnownOutputPath('/tmp/out/known3.pdf')).toBe('/tmp/out/known3.pdf')
   })
 })

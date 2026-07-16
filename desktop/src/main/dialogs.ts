@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { extname } from 'node:path'
 import { dialog, shell, type IpcMain } from 'electron'
-import { isKnownOutputPath } from './knownOutputPaths'
+import { resolveKnownOutputPath } from './knownOutputPaths'
 
 const OPENABLE_FILE_EXTENSIONS = new Set(['.pdf', '.docx'])
 
@@ -48,21 +48,24 @@ export function registerDialogHandlers(ipcMain: IpcMain): void {
       console.warn('spps:openFile received invalid path:', filePath)
       return 'Invalid file path.'
     }
-    // The renderer's argument is never trusted on its own — it must match a
-    // path the main process itself already learned about from a sidecar
-    // response (see knownOutputPaths.ts), not an arbitrary filesystem path.
-    if (!isKnownOutputPath(filePath)) {
+    // The renderer's argument is never trusted on its own, and its string
+    // value never reaches shell.openPath directly — it must match a path
+    // the main process itself already learned about from a sidecar
+    // response (see knownOutputPaths.ts), and the sink is fed that trusted
+    // stored value, not the caller's own argument.
+    const resolvedPath = resolveKnownOutputPath(filePath)
+    if (resolvedPath === undefined) {
       console.warn('spps:openFile rejected path outside the known output paths:', filePath)
       return 'File not found.'
     }
-    if (!OPENABLE_FILE_EXTENSIONS.has(extname(filePath).toLowerCase())) {
-      console.warn('spps:openFile rejected path with disallowed extension:', filePath)
+    if (!OPENABLE_FILE_EXTENSIONS.has(extname(resolvedPath).toLowerCase())) {
+      console.warn('spps:openFile rejected path with disallowed extension:', resolvedPath)
       return 'Only PDF and DOCX files can be opened.'
     }
-    if (!existsSync(filePath)) {
-      console.warn('spps:openFile rejected path that does not exist:', filePath)
+    if (!existsSync(resolvedPath)) {
+      console.warn('spps:openFile rejected path that does not exist:', resolvedPath)
       return 'File not found.'
     }
-    return shell.openPath(filePath)
+    return shell.openPath(resolvedPath)
   })
 }

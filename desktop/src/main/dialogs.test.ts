@@ -4,7 +4,7 @@ const showOpenDialogMock = vi.fn()
 const showItemInFolderMock = vi.fn()
 const openPathMock = vi.fn()
 const existsSyncMock = vi.fn()
-const isKnownOutputPathMock = vi.fn()
+const resolveKnownOutputPathMock = vi.fn()
 const ipcMainHandlers: Record<string, (...args: unknown[]) => unknown> = {}
 
 vi.mock('electron', () => ({
@@ -25,7 +25,7 @@ vi.mock('node:fs', () => ({
 }))
 
 vi.mock('./knownOutputPaths', () => ({
-  isKnownOutputPath: (...args: unknown[]) => isKnownOutputPathMock(...args)
+  resolveKnownOutputPath: (...args: unknown[]) => resolveKnownOutputPathMock(...args)
 }))
 
 import { ipcMain } from 'electron'
@@ -38,8 +38,8 @@ describe('registerDialogHandlers', () => {
     openPathMock.mockReset()
     existsSyncMock.mockReset()
     existsSyncMock.mockReturnValue(true)
-    isKnownOutputPathMock.mockReset()
-    isKnownOutputPathMock.mockReturnValue(true)
+    resolveKnownOutputPathMock.mockReset()
+    resolveKnownOutputPathMock.mockImplementation((path: string) => path)
     for (const key of Object.keys(ipcMainHandlers)) delete ipcMainHandlers[key]
     registerDialogHandlers(ipcMain)
   })
@@ -128,15 +128,23 @@ describe('registerDialogHandlers', () => {
   })
 
   it('spps:openFile rejects a path the main process never learned about from a sidecar response, even with a valid extension and an existing file', async () => {
-    isKnownOutputPathMock.mockReturnValue(false)
+    resolveKnownOutputPathMock.mockReturnValue(undefined)
     const result = await ipcMainHandlers['spps:openFile'](null, '/etc/some-other-file.pdf')
     expect(result).not.toBe('')
     expect(typeof result).toBe('string')
     expect(openPathMock).not.toHaveBeenCalled()
   })
 
-  it('spps:openFile checks the path against the known-output-paths allowlist', async () => {
+  it('spps:openFile resolves the path against the known-output-paths allowlist', async () => {
     await ipcMainHandlers['spps:openFile'](null, '/tmp/out/guide.pdf')
-    expect(isKnownOutputPathMock).toHaveBeenCalledWith('/tmp/out/guide.pdf')
+    expect(resolveKnownOutputPathMock).toHaveBeenCalledWith('/tmp/out/guide.pdf')
+  })
+
+  it('spps:openFile calls shell.openPath with the resolved (trusted) path, not the raw IPC argument', async () => {
+    resolveKnownOutputPathMock.mockReturnValue('/canonical/known/guide.pdf')
+    existsSyncMock.mockReturnValue(true)
+    openPathMock.mockResolvedValue('')
+    await ipcMainHandlers['spps:openFile'](null, '/tmp/out/guide.pdf')
+    expect(openPathMock).toHaveBeenCalledWith('/canonical/known/guide.pdf')
   })
 })

@@ -2,11 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const showOpenDialogMock = vi.fn()
 const showItemInFolderMock = vi.fn()
+const openPathMock = vi.fn()
 const ipcMainHandlers: Record<string, (...args: unknown[]) => unknown> = {}
 
 vi.mock('electron', () => ({
   dialog: { showOpenDialog: (...args: unknown[]) => showOpenDialogMock(...args) },
-  shell: { showItemInFolder: (...args: unknown[]) => showItemInFolderMock(...args) },
+  shell: {
+    showItemInFolder: (...args: unknown[]) => showItemInFolderMock(...args),
+    openPath: (...args: unknown[]) => openPathMock(...args)
+  },
   ipcMain: {
     handle: (channel: string, handler: (...args: unknown[]) => unknown) => {
       ipcMainHandlers[channel] = handler
@@ -21,6 +25,7 @@ describe('registerDialogHandlers', () => {
   beforeEach(() => {
     showOpenDialogMock.mockReset()
     showItemInFolderMock.mockReset()
+    openPathMock.mockReset()
     for (const key of Object.keys(ipcMainHandlers)) delete ipcMainHandlers[key]
     registerDialogHandlers(ipcMain)
   })
@@ -68,5 +73,21 @@ describe('registerDialogHandlers', () => {
   it('spps:openFolder does not call shell.showItemInFolder with an empty string', () => {
     ipcMainHandlers['spps:openFolder'](null, '')
     expect(showItemInFolderMock).not.toHaveBeenCalled()
+  })
+
+  it('spps:openFile calls shell.openPath with the given path', async () => {
+    openPathMock.mockResolvedValue('')
+    await ipcMainHandlers['spps:openFile'](null, '/tmp/out/guide.pdf')
+    expect(openPathMock).toHaveBeenCalledWith('/tmp/out/guide.pdf')
+  })
+
+  it('spps:openFile does not call shell.openPath with a non-string argument', async () => {
+    await ipcMainHandlers['spps:openFile'](null, 123)
+    expect(openPathMock).not.toHaveBeenCalled()
+  })
+
+  it('spps:openFile does not call shell.openPath with an empty string', async () => {
+    await ipcMainHandlers['spps:openFile'](null, '')
+    expect(openPathMock).not.toHaveBeenCalled()
   })
 })

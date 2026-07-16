@@ -11,6 +11,7 @@ const spps = {
   pickMaterialsFile: () => ipcRenderer.invoke('spps:pickMaterialsFile'),
   pickOutputDirectory: () => ipcRenderer.invoke('spps:pickOutputDirectory'),
   openFolder: (path: string) => ipcRenderer.invoke('spps:openFolder', path),
+  openFile: (path: string) => ipcRenderer.invoke('spps:openFile', path),
   parseSequences: (fastaPath: string, materialsPath: string | null) =>
     ipcRenderer.invoke('spps:parseSequences', fastaPath, materialsPath),
   getResidues: () => ipcRenderer.invoke('spps:getResidues'),

@@ -178,7 +178,16 @@ not a broken/blank table.
   `current_cycle`, and `cycle_guide` (all optional/nullable, matching the
   existing envelope's `| null` pattern for the no-synthesis-yet case).
 - New `spps.setCyclePosition(cycleNumber: number): Promise<SppsEnvelope>`
-  → `POST /synthesis/cycle-position`.
+  → `POST /synthesis/cycle-position`. Note: `SppsEnvelope.data` is typed
+  for `/config` responses (`SppsConfig`); this call's response doesn't
+  carry a meaningful `data` payload, so the plan should either introduce a
+  generic `SppsEnvelope<T = void>` or a dedicated minimal envelope type —
+  not silently reuse the config-shaped one (this exact imprecision was a
+  CodeRabbit finding on Phase 3's `saveResidue`; don't repeat it here).
+  Failure is non-fatal: if the save fails (network/IPC error), the
+  renderer keeps the locally-navigated cycle index and does not block or
+  show an error — this is a convenience position marker, not part of the
+  GMP audit trail (that lives in the signed, printed PDF).
 - New `spps.openFile(path: string): Promise<void>` → new
   `ipcMain.handle('spps:openFile', ...)` in `dialogs.ts`, using
   `shell.openPath` (opens the file in its default OS viewer — distinct
@@ -190,7 +199,13 @@ not a broken/blank table.
 
 - `App.tsx`'s "Cycle guide" tab (present in `TABS`, currently always
   disabled) becomes enabled once `getLastSynthesis()` resolves with real
-  data — mirrors how "New synthesis" is already always enabled.
+  data. There is no shared/global state store in this codebase (each view
+  fetches its own data independently — confirmed from Phases 2/3); `App.tsx`
+  makes its own lightweight `getLastSynthesis()` call on mount purely to
+  decide tab-enablement, separate from Dashboard's own call for its
+  last-synthesis card. This is a small duplicated fetch, consistent with
+  the existing per-component-fetch pattern rather than introducing a new
+  state-sharing mechanism for one boolean.
 - Dashboard's last-synthesis card gets a "View cycle guide" button that
   switches the active tab — the simplified equivalent of the mockup's
   "clicking a row in the active-synthesis table" behavior, since this

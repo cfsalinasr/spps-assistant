@@ -6,7 +6,8 @@ from typing import Dict, List, Optional, Tuple
 
 from spps_assistant.application.ports import DatabaseRepository, ConfigRepository
 from spps_assistant.domain.models import (
-    CouplingCycle, SynthesisConfig, Vessel, YieldResult
+    CouplingCycle, CycleGuideViewData, CyclePageData, DispatchRow, GmpStep,
+    SecondaryCouplingRow, SynthesisConfig, Vessel, VesselAssignment, YieldResult
 )
 from spps_assistant.domain.constants import FREE_RESIDUE_MW
 from spps_assistant.domain.yield_calc import (
@@ -14,6 +15,9 @@ from spps_assistant.domain.yield_calc import (
 )
 from spps_assistant.domain.solubility import analyze_peptide
 from spps_assistant.domain.sequence import parse_token
+
+WASH_DURATION = '2 × 1 min'
+COUPLING_DURATION = '30 min'
 
 
 def build_coupling_cycles(vessels: List[Vessel]) -> List[CouplingCycle]:
@@ -48,6 +52,170 @@ def build_coupling_cycles(vessels: List[Vessel]) -> List[CouplingCycle]:
             all_vessels=vessels,
         ))
     return cycles
+
+
+def _build_dispatch_rows(
+    cycle: CouplingCycle, config: SynthesisConfig, residue_info_map: Dict
+) -> List[DispatchRow]:
+    """Build dispatch rows (one per residue token active in this cycle)."""
+    from spps_assistant.domain.sequence import token_to_3letter
+    from spps_assistant.domain.constants import FMOC_MW_DEFAULTS
+    # parse_token is already imported at module level in this file.
+    from spps_assistant.domain.stoichiometry import (
+        calc_volume_stoichiometry, calc_volume_legacy, format_volume_formula
+    )
+
+    n_vessels = len(cycle.all_vessels)
+    total_resin_mmol = sum(v.resin_mass_g * v.substitution_mmol_g for v in cycle.all_vessels)
+    avg_resin_mmol = total_resin_mmol / n_vessels if n_vessels else 0.03
+
+    rows = []
+    for token, vessel_nums in cycle.residues_at_position.items():
+        three = token_to_3letter(token)
+        n_v = len(vessel_nums)
+
+        if token in residue_info_map:
+            res = residue_info_map[token]
+            fmoc_mw = res.fmoc_mw
+            stock_conc = res.stock_conc
+        else:
+            try:
+                base, _ = parse_token(token)
+            except ValueError:
+                base = 'X'
+            fmoc_mw = FMOC_MW_DEFAULTS.get(token, FMOC_MW_DEFAULTS.get(base, 353.4))
+            stock_conc = 0.5
+
+        if config.volume_mode == 'legacy':
+            volume_ml = calc_volume_legacy(n_v)
+            formula_str = f"V = {n_v} × 2 mL"
+        else:
+            volume_ml = calc_volume_stoichiometry(n_v, config.aa_equivalents, avg_resin_mmol, stock_conc)
+            formula_str = format_volume_formula(
+                n_v, config.aa_equivalents, avg_resin_mmol, stock_conc, volume_ml
+            )
+
+        mmol = n_v * config.aa_equivalents * avg_resin_mmol
+
+        rows.append(DispatchRow(
+            residue_3letter=three,
+            fmoc_mw=fmoc_mw,
+            mmol=mmol,
+            volume_ml=volume_ml,
+            formula_shown=formula_str,
+            vessel_numbers=sorted(vessel_nums),
+        ))
+    return rows
+
+
+def _build_deprotection_steps(config: SynthesisConfig) -> List[GmpStep]:
+    """Build the deprotection GMP steps for a cycle, matching the configured protocol."""
+    dep_name = config.deprotection_reagent
+    steps = [
+        GmpStep(label='1. Deprotection', detail=f'{dep_name} in DMF', n_checkboxes=2, duration='2 × 10 min'),
+        GmpStep(label='2. DMF wash', detail='DMF (3×)', n_checkboxes=3, duration='3 × 1 min'),
+    ]
+    if config.include_bb_test:
+        steps.append(GmpStep(
+            label='3. Bromophenol Blue test', detail='Bromophenol Blue in DMF (1×)',
+            n_checkboxes=1, duration='1 × 2 min',
+        ))
+        steps.append(GmpStep(label='4. DMF wash', detail='DMF (2×)', n_checkboxes=2, duration=WASH_DURATION))
+        steps.append(GmpStep(label='5. DCM wash', detail='DCM (2×)', n_checkboxes=2, duration=WASH_DURATION))
+    else:
+        steps.append(GmpStep(label='3. DMF wash', detail='DMF (2×)', n_checkboxes=2, duration=WASH_DURATION))
+        steps.append(GmpStep(label='4. DCM wash', detail='DCM (2×)', n_checkboxes=2, duration=WASH_DURATION))
+    if config.include_kaiser_test:
+        steps.append(GmpStep(
+            label='Kaiser test', detail='Coupling completeness check',
+            n_checkboxes=1, duration='As needed',
+        ))
+    return steps
+
+
+def _build_coupling_steps(config: SynthesisConfig, cycle: CouplingCycle) -> List[GmpStep]:
+    """Build the coupling GMP steps for a cycle (4 repeats + post-coupling wash)."""
+    from spps_assistant.domain.sequence import build_coupling_label
+
+    first_token = next(iter(cycle.residues_at_position), 'AA')
+    coupling_label = build_coupling_label(config, first_token)
+
+    return [
+        GmpStep(label='1st coupling', detail=coupling_label, n_checkboxes=1, duration=COUPLING_DURATION),
+        GmpStep(label='2nd coupling', detail=f'Repeat: {coupling_label}', n_checkboxes=1, duration=COUPLING_DURATION),
+        GmpStep(label='3rd coupling', detail=f'Repeat: {coupling_label}', n_checkboxes=1, duration=COUPLING_DURATION),
+        GmpStep(label='4th coupling', detail=f'Repeat: {coupling_label}', n_checkboxes=1, duration=COUPLING_DURATION),
+        GmpStep(label='Post-coupling wash', detail='DMF (2×1 min), DCM (3×1 min)', n_checkboxes=0, duration='5 min'),
+    ]
+
+
+def _build_vessel_assignments(cycle: CouplingCycle) -> List[VesselAssignment]:
+    """Build the per-vessel residue-or-OUT assignment list for a cycle."""
+    from spps_assistant.domain.sequence import token_to_3letter
+
+    idx = cycle.cycle_number - 1
+    assignments = []
+    for vessel in cycle.all_vessels:
+        if idx < len(vessel.reversed_tokens):
+            three = token_to_3letter(vessel.reversed_tokens[idx])
+        else:
+            three = None
+        assignments.append(VesselAssignment(
+            vessel_number=vessel.number, vessel_name=vessel.name, residue_3letter=three,
+        ))
+    return assignments
+
+
+def _build_secondary_coupling_rows(
+    cycle: CouplingCycle, config: SynthesisConfig
+) -> Optional[List[SecondaryCouplingRow]]:
+    """Build the Teabag-only secondary coupling verification rows, or None."""
+    from spps_assistant.domain.sequence import token_to_3letter
+
+    if config.vessel_method != 'Teabag':
+        return None
+
+    idx = cycle.cycle_number - 1
+    rows = []
+    for vessel in cycle.all_vessels:
+        if idx < len(vessel.reversed_tokens):
+            three = token_to_3letter(vessel.reversed_tokens[idx])
+        else:
+            three = 'OUT'
+        rows.append(SecondaryCouplingRow(
+            vessel_number=vessel.number, vessel_name=vessel.name, residue_3letter=three,
+        ))
+    return rows
+
+
+def build_cycle_guide_view_data(
+    vessels: List[Vessel],
+    coupling_cycles: List[CouplingCycle],
+    config: SynthesisConfig,
+    residue_info_map: Dict,
+    date_str: str,
+) -> CycleGuideViewData:
+    """Build the structured, display-ready data for every coupling cycle.
+
+    This is the single source of truth for per-cycle GMP record content —
+    both the PDF/DOCX generators and the GUI's Cycle Guide view render
+    from this, so the on-screen preview and the exported documents can
+    never drift apart.
+    """
+    cycles = [
+        CyclePageData(
+            cycle_number=cycle.cycle_number,
+            total_cycles=cycle.total_cycles,
+            dispatch_rows=_build_dispatch_rows(cycle, config, residue_info_map),
+            deprotection_steps=_build_deprotection_steps(config),
+            coupling_steps=_build_coupling_steps(config, cycle),
+            vessel_assignments=_build_vessel_assignments(cycle),
+            secondary_coupling_rows=_build_secondary_coupling_rows(cycle, config),
+        )
+        for cycle in coupling_cycles
+    ]
+
+    return CycleGuideViewData(synthesis_name=config.name, date_str=date_str, cycles=cycles)
 
 
 def determine_resin_mass(

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Dashboard from './views/Dashboard'
 import NewSynthesis from './views/NewSynthesis'
 import CycleGuide from './views/CycleGuide'
+import Materials from './views/Materials'
 
 const TABS = ['Dashboard', 'New synthesis', 'Cycle guide', 'Materials', 'Peptide info'] as const
 type Tab = (typeof TABS)[number]
@@ -19,18 +20,23 @@ function getTabClassName(active: boolean, enabled: boolean): string {
 function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>('Dashboard')
   const [cycleGuideEnabled, setCycleGuideEnabled] = useState(false)
+  const [materialsEnabled, setMaterialsEnabled] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     window.spps
       .getLastSynthesis()
       .then((envelope) => {
-        if (!cancelled && envelope.ok && envelope.data?.cycle_guide) {
+        if (cancelled) return
+        if (envelope.ok && envelope.data?.cycle_guide) {
           setCycleGuideEnabled(true)
+        }
+        if (envelope.ok && envelope.data?.materials) {
+          setMaterialsEnabled(true)
         }
       })
       .catch(() => {
-        // Leave the tab disabled — matches the "no active synthesis" state.
+        // Leave the tabs disabled — matches the "no active synthesis" state.
       })
     return () => {
       cancelled = true
@@ -42,6 +48,11 @@ function App(): React.JSX.Element {
     setActiveTab('Cycle guide')
   }
 
+  function handleViewMaterials(): void {
+    setMaterialsEnabled(true)
+    setActiveTab('Materials')
+  }
+
   return (
     <div className="min-h-screen bg-bg">
       <nav className="bg-bg2 border-b border-[color:var(--border)] flex px-2">
@@ -49,7 +60,8 @@ function App(): React.JSX.Element {
           const enabled =
             tab === 'Dashboard' ||
             tab === 'New synthesis' ||
-            (tab === 'Cycle guide' && cycleGuideEnabled)
+            (tab === 'Cycle guide' && cycleGuideEnabled) ||
+            (tab === 'Materials' && materialsEnabled)
           const active = tab === activeTab
           return (
             <button
@@ -68,16 +80,21 @@ function App(): React.JSX.Element {
         <Dashboard
           onNewSynthesis={() => setActiveTab('New synthesis')}
           onViewCycleGuide={handleViewCycleGuide}
+          onViewMaterials={handleViewMaterials}
         />
       )}
       {activeTab === 'New synthesis' && (
         <NewSynthesis
           onDone={() => setActiveTab('Dashboard')}
           onViewCycleGuide={handleViewCycleGuide}
+          onViewMaterials={handleViewMaterials}
         />
       )}
       {activeTab === 'Cycle guide' && (
         <CycleGuide onNewSynthesis={() => setActiveTab('New synthesis')} />
+      )}
+      {activeTab === 'Materials' && (
+        <Materials onNewSynthesis={() => setActiveTab('New synthesis')} />
       )}
     </div>
   )

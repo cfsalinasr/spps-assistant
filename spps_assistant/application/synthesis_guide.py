@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Tuple
 from spps_assistant.application.ports import DatabaseRepository, ConfigRepository
 from spps_assistant.domain.models import (
     CouplingCycle, CycleGuideViewData, CyclePageData, DispatchRow, GmpStep,
-    SecondaryCouplingRow, SynthesisConfig, Vessel, VesselAssignment, YieldResult
+    MaterialsViewData, SecondaryCouplingRow, SynthesisConfig, Vessel, VesselAssignment, YieldResult
 )
 from spps_assistant.domain.constants import FREE_RESIDUE_MW
 from spps_assistant.domain.yield_calc import (
@@ -387,7 +387,7 @@ class SynthesisGuideUseCase:
         vessels: List[Vessel],
         yield_results: Optional[List[YieldResult]] = None,
         solubility_results: Optional[Dict] = None,
-    ) -> Tuple[Dict[str, str], CycleGuideViewData]:
+    ) -> Tuple[Dict[str, str], CycleGuideViewData, MaterialsViewData]:
         """Execute the synthesis guide generation workflow.
 
         Steps:
@@ -408,20 +408,30 @@ class SynthesisGuideUseCase:
             solubility_results: Optional pre-computed solubility results to avoid recomputation
 
         Returns:
-            Tuple of (output_paths, cycle_guide_data). output_paths maps
-            output file types to their paths. cycle_guide_data is the
-            structured per-cycle GMP record data for the GUI's Cycle Guide
-            view — the same data the PDF/DOCX generators render from
-            internally, so the two can never drift apart.
+            Tuple of (output_paths, cycle_guide_data, materials_data).
+            output_paths maps output file types to their paths.
+            cycle_guide_data is the structured per-cycle GMP record data for
+            the GUI's Cycle Guide view. materials_data is the structured
+            materials-explosion data for the GUI's Materials view. Both are
+            the same data the PDF/DOCX/XLSX generators render from
+            internally, so the GUI previews and the exported documents can
+            never drift apart.
         """
+        from spps_assistant.application.materials import build_materials_view_data
         from spps_assistant.infrastructure.pdf_generator import (
-            generate_cycle_guide_pdf, generate_peptide_info_pdf
+            generate_cycle_guide_pdf, generate_peptide_info_pdf, generate_materials_pdf
         )
         from spps_assistant.infrastructure.docx_generator import (
             generate_cycle_guide_docx, generate_peptide_info_docx
         )
+        from spps_assistant.infrastructure.xlsx_generator import generate_materials_xlsx
 
-        out_path = Path(output_dir)
+        # Resolve to an absolute path: output_dir is frequently a relative
+        # default (e.g. 'spps_output'), and the returned output_paths are
+        # consumed by the Electron main process, whose own cwd differs from
+        # this sidecar process's cwd — a relative path here would silently
+        # fail existsSync()/shell.openPath() checks on the Electron side.
+        out_path = Path(output_dir).resolve()
         out_path.mkdir(parents=True, exist_ok=True)
 
         today = date.today().isoformat()
@@ -447,6 +457,8 @@ class SynthesisGuideUseCase:
         cycle_guide_docx = out_path / f"{safe_name}_cycle_guide.docx"
         peptide_info_pdf = out_path / f"{safe_name}_peptide_info.pdf"
         peptide_info_docx = out_path / f"{safe_name}_peptide_info.docx"
+        materials_xlsx = out_path / f"{safe_name}_materials.xlsx"
+        materials_pdf = out_path / f"{safe_name}_materials.pdf"
 
         generate_cycle_guide_pdf(
             path=cycle_guide_pdf,
@@ -485,6 +497,24 @@ class SynthesisGuideUseCase:
             yield_results=yield_results,
         )
 
+        # 6.5 Materials explosion (XLSX + PDF), computed once and shared
+        # with this method's return value so the GUI preview and the
+        # exported files can never drift apart.
+        materials_data = build_materials_view_data(vessels, residue_info_map, config)
+
+        generate_materials_xlsx(
+            path=materials_xlsx,
+            synthesis_name=config.name,
+            materials_rows=materials_data.rows,
+        )
+
+        generate_materials_pdf(
+            path=materials_pdf,
+            synthesis_name=config.name,
+            materials_rows=materials_data.rows,
+            config_summary=materials_data.config_summary,
+        )
+
         # 7. Log to DB
         try:
             self.db.log_synthesis(
@@ -506,4 +536,6 @@ class SynthesisGuideUseCase:
             'cycle_guide_docx': str(cycle_guide_docx),
             'peptide_info_pdf': str(peptide_info_pdf),
             'peptide_info_docx': str(peptide_info_docx),
-        }, cycle_guide_data
+            'materials_xlsx': str(materials_xlsx),
+            'materials_pdf': str(materials_pdf),
+        }, cycle_guide_data, materials_data

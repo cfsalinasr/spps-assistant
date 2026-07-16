@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent } from '../components/ui/card'
+import SynthesisEmptyState from '../components/SynthesisEmptyState'
+import { useExportFile } from '../hooks/useExportFile'
 import type { CycleGuideData, CyclePageData } from '../../../preload/index.d'
 
 type CycleGuideState =
@@ -16,7 +18,7 @@ interface CycleGuideProps {
 export default function CycleGuide({ onNewSynthesis }: Readonly<CycleGuideProps>): React.JSX.Element {
   const [state, setState] = useState<CycleGuideState>({ status: 'loading' })
   const [cycleIndex, setCycleIndex] = useState(0)
-  const [exportError, setExportError] = useState<string | null>(null)
+  const { exportError, handleExport } = useExportFile()
 
   useEffect(() => {
     let cancelled = false
@@ -50,34 +52,17 @@ export default function CycleGuide({ onNewSynthesis }: Readonly<CycleGuideProps>
     })
   }
 
-  async function handleExport(path: string): Promise<void> {
-    setExportError(null)
-    const result = await window.spps.openFile(path)
-    if (result) {
-      setExportError(result)
-    }
-  }
-
   if (state.status === 'loading') {
     return <p className="text-text3 font-sans text-sm p-5">Loading…</p>
   }
 
   if (state.status === 'error' || state.status === 'none') {
     return (
-      <div className="bg-bg p-5">
-        <Card className="bg-bg2">
-          <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-            <p className="text-text2 font-sans text-sm mb-4">
-              {state.status === 'error'
-                ? "Couldn't load the cycle guide. Is the sidecar running?"
-                : 'No active synthesis yet.'}
-            </p>
-            <Button onClick={onNewSynthesis} className="bg-teal text-bg hover:bg-teal/90">
-              + New synthesis
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <SynthesisEmptyState
+        status={state.status}
+        errorMessage="Couldn't load the cycle guide. Is the sidecar running?"
+        onNewSynthesis={onNewSynthesis}
+      />
     )
   }
 

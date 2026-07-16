@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from spps_assistant.application.ports import DatabaseRepository
-from spps_assistant.domain.models import MaterialsRow, SynthesisConfig, Vessel
+from spps_assistant.domain.models import MaterialsRow, MaterialsViewData, SynthesisConfig, Vessel
 from spps_assistant.domain.stoichiometry import (
     calc_volume_stoichiometry, calc_volume_legacy, calc_mass_mg
 )
@@ -139,6 +139,43 @@ def build_materials_rows(
         ))
 
     return rows
+
+
+def build_materials_view_data(
+    vessels: List[Vessel],
+    residue_info_map: Dict,
+    config: SynthesisConfig,
+) -> MaterialsViewData:
+    """Build the full materials-explosion view data for the GUI's Materials
+    view: the per-residue rows plus summary statistics, all derived from
+    real domain objects so the on-screen preview and the exported XLSX/PDF
+    (which render from the same .rows/.config_summary) can never drift.
+
+    Args:
+        vessels: List of Vessel objects
+        residue_info_map: Token -> ResidueInfo map
+        config: SynthesisConfig with equivalents settings
+
+    Returns:
+        MaterialsViewData with rows and summary stats
+    """
+    rows = build_materials_rows(vessels, residue_info_map, config)
+
+    config_summary = {
+        'Activator': str(config.activator),
+        'AA Equivalents': str(config.aa_equivalents),
+        'Volume Mode': str(config.volume_mode),
+        'Base': str(config.base),
+    }
+
+    return MaterialsViewData(
+        synthesis_name=config.name,
+        rows=rows,
+        total_residue_types=len(rows),
+        total_mass_mg=round(sum(r.mass_mg for r in rows), 2),
+        total_volume_ml=round(sum(r.volume_ml for r in rows), 3),
+        config_summary=config_summary,
+    )
 
 
 class MaterialsUseCase:

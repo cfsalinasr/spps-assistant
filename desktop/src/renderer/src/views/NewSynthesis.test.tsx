@@ -52,7 +52,7 @@ describe('NewSynthesis wizard', () => {
     const user = userEvent.setup()
     const onDone = vi.fn()
 
-    render(<NewSynthesis onDone={onDone} onViewCycleGuide={vi.fn()} />)
+    render(<NewSynthesis onDone={onDone} onViewCycleGuide={vi.fn()} onViewMaterials={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: /browse for fasta file/i }))
     await waitFor(() =>

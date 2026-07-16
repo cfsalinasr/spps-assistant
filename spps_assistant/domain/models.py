@@ -102,6 +102,16 @@ class MaterialsRow:
 
 
 @dataclass
+class MaterialsViewData:
+    synthesis_name: str
+    rows: List[MaterialsRow]
+    total_residue_types: int
+    total_mass_mg: float
+    total_volume_ml: float
+    config_summary: Dict[str, str]
+
+
+@dataclass
 class DispatchRow:
     residue_3letter: str
     fmoc_mw: float

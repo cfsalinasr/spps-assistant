@@ -37,7 +37,7 @@ describe('Dashboard', () => {
       })
     )
 
-    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} />)
+    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} onViewMaterials={() => {}} />)
 
     expect(screen.getByText(/loading configuration/i)).toBeInTheDocument()
 
@@ -55,7 +55,7 @@ describe('Dashboard', () => {
       baseStub({ getConfig: () => Promise.reject(new Error('sidecar unreachable')) })
     )
 
-    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} />)
+    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} onViewMaterials={() => {}} />)
 
     await waitFor(() => {
       expect(screen.getByText(/couldn.t load configuration/i)).toBeInTheDocument()
@@ -68,7 +68,7 @@ describe('Dashboard', () => {
       baseStub({ getConfig: () => Promise.resolve({ ok: true, data: { activator: 'HBTU' } }) })
     )
 
-    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} />)
+    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} onViewMaterials={() => {}} />)
 
     await waitFor(() => {
       expect(screen.getByText(/no active synthes/i)).toBeInTheDocument()
@@ -97,7 +97,7 @@ describe('Dashboard', () => {
       })
     )
 
-    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} />)
+    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} onViewMaterials={() => {}} />)
 
     await waitFor(() => {
       expect(screen.getByText('BatchA')).toBeInTheDocument()
@@ -125,7 +125,7 @@ describe('Dashboard', () => {
     )
     const user = userEvent.setup()
 
-    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={onViewCycleGuide} />)
+    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={onViewCycleGuide} onViewMaterials={() => {}} />)
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /view cycle guide/i })).toBeInTheDocument()
@@ -133,6 +133,37 @@ describe('Dashboard', () => {
     await user.click(screen.getByRole('button', { name: /view cycle guide/i }))
 
     expect(onViewCycleGuide).toHaveBeenCalledTimes(1)
+  })
+
+  it('clicking View materials calls onViewMaterials', async () => {
+    const onViewMaterials = vi.fn()
+    vi.stubGlobal(
+      'spps',
+      baseStub({
+        getLastSynthesis: () =>
+          Promise.resolve({
+            ok: true,
+            data: {
+              name: 'BatchA',
+              output_directory: '/tmp/out',
+              generated_at: '2026-07-13T00:00:00',
+              vessel_count: 2
+            }
+          })
+      })
+    )
+    const user = userEvent.setup()
+
+    render(
+      <Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} onViewMaterials={onViewMaterials} />
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /view materials/i })).toBeInTheDocument()
+    )
+    await user.click(screen.getByRole('button', { name: /view materials/i }))
+
+    expect(onViewMaterials).toHaveBeenCalledTimes(1)
   })
 
   it('shows a loading state for the last synthesis card on initial mount', () => {
@@ -143,7 +174,7 @@ describe('Dashboard', () => {
       })
     )
 
-    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} />)
+    render(<Dashboard onNewSynthesis={() => {}} onViewCycleGuide={() => {}} onViewMaterials={() => {}} />)
 
     expect(screen.getByText(/loading…/i)).toBeInTheDocument()
   })

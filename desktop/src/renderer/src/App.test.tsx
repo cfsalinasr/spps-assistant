@@ -97,6 +97,33 @@ describe('App', () => {
     })
   })
 
+  it('enables the Materials tab once a synthesis with materials data exists', async () => {
+    vi.stubGlobal('spps', {
+      getConfig: () => Promise.resolve({ ok: true, data: {} }),
+      setConfig: () => Promise.resolve({ ok: true, data: {} }),
+      getLastSynthesis: () =>
+        Promise.resolve({
+          ok: true,
+          data: {
+            name: 'TestRun',
+            output_directory: '/tmp/out',
+            generated_at: '2026-01-01T00:00:00+00:00',
+            vessel_count: 1,
+            materials: { synthesis_name: 'TestRun', rows: [], total_residue_types: 0, total_mass_mg: 0, total_volume_ml: 0, config_summary: {} }
+          }
+        }),
+      pickFastaFile: vi.fn().mockResolvedValue(null)
+    })
+
+    const { container } = render(<App />)
+    const nav = within(container.querySelector('nav')!)
+
+    await waitFor(() => {
+      const tab = nav.getByText('Materials')
+      expect(tab.className).not.toContain('cursor-not-allowed')
+    })
+  })
+
   it('enables the Cycle guide tab after viewing it from Dashboard mid-session, even with no synthesis at mount', async () => {
     const user = userEvent.setup()
     vi.stubGlobal('spps', {

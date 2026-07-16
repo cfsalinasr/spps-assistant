@@ -193,7 +193,7 @@ def generate(
     console.print(f"\n[bold]Generating output files in:[/bold] {config.output_directory}")
     use_case = SynthesisGuideUseCase(db=db, config_repo=config_repo)
     try:
-        output_paths, _cycle_guide_data = use_case.run(
+        output_paths, _cycle_guide_data, _materials_data = use_case.run(
             output_dir=config.output_directory,
             config=config,
             residue_info_map=residue_info_map,
